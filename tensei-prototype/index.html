@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Tensei — AWS Support Workspace</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Entry Screen -->
+    <div id="entry-screen" class="screen active">
+        <div class="entry-container">
+            <div class="aws-logo">
+                <img src="https://a0.awsstatic.com/libra-css/images/logos/aws_smile-header-desktop-en-white_59x35.png" alt="AWS" height="24">
+                <span>AWS Support</span>
+            </div>
+            <div class="entry-alert">
+                <div class="alert-icon pulse">⚠️</div>
+                <div class="alert-content">
+                    <h2>Issue Detected in Your Environment</h2>
+                    <p class="alert-detail">We've detected <strong>47 pod restarts</strong> in your EKS cluster <code>prod-east-1</code> over the last 12 minutes. Multiple CrashLoopBackOff events observed.</p>
+                    <div class="alert-meta">
+                        <span class="severity high">High Severity</span>
+                        <span class="detected-time">Detected 12 min ago</span>
+                        <span class="service-tag">Amazon EKS</span>
+                    </div>
+                </div>
+            </div>
+            <button id="enter-workspace-btn" class="btn-primary">Enter Support Workspace →</button>
+            <p class="entry-note">An AI agent is already investigating. You'll join a live diagnostic session.</p>
+        </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <div id="workspace-screen" class="screen">
+        <!-- Header -->
+        <header class="workspace-header">
+            <div class="header-left">
+                <img src="https://a0.awsstatic.com/libra-css/images/logos/aws_smile-header-desktop-en-white_59x35.png" alt="AWS" height="20">
+                <h1>Support Workspace</h1>
+                <span class="session-badge live">● Live Session</span>
+            </div>
+            <div class="header-right">
+                <div class="participants">
+                    <div class="participant you" title="You (Customer)">Y</div>
+                    <div class="participant ai" title="AI Agent">AI</div>
+                    <div class="participant engineer hidden" id="engineer-avatar" title="Sarah K. — Networking">SK</div>
+                </div>
+                <span class="session-time" id="session-timer">00:00</span>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <div class="workspace-body" id="workspace-body">
+            <!-- Left: AI Chat Panel -->
+            <div class="panel chat-panel" id="panel-chat">
+                <div class="panel-header">
+                    <span class="panel-icon">💬</span>
+                    <h2>AI Investigation</h2>
+                    <span class="ai-status" id="ai-status">Investigating...</span>
+                </div>
+                <div class="chat-messages" id="chat-messages">
+                    <!-- Messages injected by JS -->
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" id="customer-input" placeholder="Type a message or confirm findings..." />
+                    <button id="send-btn" class="btn-send">Send</button>
+                </div>
+                <!-- Quick responses -->
+                <div class="quick-responses" id="quick-responses">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+
+            <!-- Center: Live Context Panel -->
+            <div class="resize-handle" id="resize-handle-1"></div>
+            <div class="panel context-panel" id="panel-context">
+                <div class="panel-header">
+                    <span class="panel-icon">📊</span>
+                    <h2>Live Context</h2>
+                    <div class="context-tabs">
+                        <button class="tab active" data-tab="cluster">Cluster</button>
+                        <button class="tab" data-tab="logs">Logs</button>
+                        <button class="tab" data-tab="topology">Topology</button>
+                    </div>
+                </div>
+                <div class="context-content" id="context-content">
+                    <!-- Cluster View (default) -->
+                    <div class="context-view active" id="view-cluster">
+                        <div class="cluster-header">
+                            <h3>EKS Cluster: <code>prod-east-1</code></h3>
+                            <span class="cluster-status critical">● Critical</span>
+                        </div>
+                        <div class="node-grid" id="node-grid">
+                            <!-- Nodes injected by JS -->
+                        </div>
+                        <div class="cluster-stats">
+                            <div class="stat">
+                                <span class="stat-label">Pod Restarts</span>
+                                <span class="stat-value critical" id="restart-count">47</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Affected Pods</span>
+                                <span class="stat-value warning">3/12</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Uptime</span>
+                                <span class="stat-value">99.2%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Logs View -->
+                    <div class="context-view" id="view-logs">
+                        <div class="log-stream" id="log-stream">
+                            <!-- Logs injected by JS -->
+                        </div>
+                    </div>
+                    <!-- Topology View -->
+                    <div class="context-view" id="view-topology">
+                        <div class="topology-diagram" id="topology-diagram">
+                            <!-- SVG topology injected by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Engineer Panel -->
+            <div class="resize-handle" id="resize-handle-2"></div>
+            <div class="panel engineer-panel" id="engineer-panel">
+                <div class="panel-header">
+                    <span class="panel-icon">👩‍💻</span>
+                    <h2>Specialist</h2>
+                    <span class="engineer-status" id="engineer-status">Not connected</span>
+                </div>
+                <div class="engineer-content" id="engineer-content">
+                    <!-- State 1: Collapsed/Waiting -->
+                    <div class="engineer-state" id="eng-state-waiting">
+                        <div class="engineer-placeholder">
+                            <div class="placeholder-icon">🛡️</div>
+                            <p>A human specialist will join here if needed.</p>
+                            <p class="placeholder-sub">The AI is leading the investigation. If it needs expert help, it will ask your permission to bring someone in.</p>
+                        </div>
+                    </div>
+                    <!-- State 2: Connecting -->
+                    <div class="engineer-state hidden" id="eng-state-connecting">
+                        <div class="connecting-animation">
+                            <div class="connecting-spinner"></div>
+                            <p class="connecting-text">Connecting you with</p>
+                            <h3 class="engineer-name">Sarah K.</h3>
+                            <p class="engineer-specialty">Networking & VPC Specialist</p>
+                            <p class="connecting-sub">She's reviewing the investigation context now...</p>
+                        </div>
+                    </div>
+                    <!-- State 3: Active -->
+                    <div class="engineer-state hidden" id="eng-state-active">
+                        <div class="engineer-profile">
+                            <div class="engineer-avatar">SK</div>
+                            <div class="engineer-info">
+                                <h3>Sarah K.</h3>
+                                <span>Networking & VPC Specialist</span>
+                            </div>
+                            <span class="online-badge">● Online</span>
+                        </div>
+                        <div class="engineer-chat" id="engineer-chat">
+                            <!-- Engineer messages injected by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Investigation Trail (Bottom) -->
+        <div class="investigation-trail">
+            <div class="trail-header">
+                <span class="trail-icon">📋</span>
+                <h3>Investigation Trail</h3>
+                <span class="trail-count" id="trail-count">0 events</span>
+            </div>
+            <div class="trail-entries" id="trail-entries">
+                <!-- Trail entries injected by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Handover Package Modal -->
+    <div class="modal hidden" id="handover-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📦 Handover Package</h2>
+                <p>Auto-generated context for the incoming specialist</p>
+                <button class="modal-close" id="close-handover">✕</button>
+            </div>
+            <div class="handover-body">
+                <div class="handover-section">
+                    <h4>Customer Context</h4>
+                    <ul>
+                        <li><strong>Customer:</strong> Acme Corp (Enterprise Tier)</li>
+                        <li><strong>Environment:</strong> Production (EKS cluster: prod-east-1)</li>
+                        <li><strong>Impact:</strong> Customer-facing application down</li>
+                    </ul>
+                </div>
+                <div class="handover-section">
+                    <h4>What AI Already Tried</h4>
+                    <div class="tried-list">
+                        <div class="tried-item success">✅ Checked pod logs → ImagePullBackOff confirmed</div>
+                        <div class="tried-item success">✅ Checked ECR permissions → Found gap, FIXED</div>
+                        <div class="tried-item success">✅ Checked image tag → Exists, correct</div>
+                        <div class="tried-item warning">⚠️ Checked NetworkPolicy → INCONCLUSIVE</div>
+                        <div class="tried-item pending">❌ Did NOT check: VPC CNI config, node security groups</div>
+                    </div>
+                </div>
+                <div class="handover-section">
+                    <h4>AI's Current Hypothesis</h4>
+                    <div class="hypothesis-box">
+                        "Egress rule in NetworkPolicy may be blocking image pull from ECR endpoint."
+                        <span class="confidence">Confidence: 45%</span>
+                    </div>
+                </div>
+                <div class="handover-section">
+                    <h4>Recommended Next Steps</h4>
+                    <ol>
+                        <li>Inspect NetworkPolicy egress rules for ECR CIDR blocks</li>
+                        <li>Check if VPC endpoints for ECR are configured</li>
+                        <li>Verify node security group allows outbound 443 to ECR</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
