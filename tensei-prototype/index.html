@@ -17,17 +17,17 @@
             <div class="entry-alert">
                 <div class="alert-icon pulse">⚠️</div>
                 <div class="alert-content">
-                    <h2>Issue Detected in Your Environment</h2>
-                    <p class="alert-detail">We've detected <strong>47 pod restarts</strong> in your EKS cluster <code>prod-east-1</code> over the last 12 minutes. Multiple CrashLoopBackOff events observed.</p>
+                    <h2>CloudWatch Alarm Triggered</h2>
+                    <p class="alert-detail">Your CloudWatch alarm <code>EKS-PodRestart-Critical</code> fired for cluster <code>prod-east-1</code> — <strong>47 pod restarts</strong> detected in the last 12 minutes. Multiple CrashLoopBackOff events observed.</p>
                     <div class="alert-meta">
                         <span class="severity high">High Severity</span>
-                        <span class="detected-time">Detected 12 min ago</span>
+                        <span class="detected-time">Alarm fired 12 min ago</span>
                         <span class="service-tag">Amazon EKS</span>
                     </div>
                 </div>
             </div>
-            <button id="enter-workspace-btn" class="btn-primary">Enter Support Workspace →</button>
-            <p class="entry-note">An AI agent is already investigating. You'll join a live diagnostic session.</p>
+            <button id="enter-workspace-btn" class="btn-primary">Open Support Workspace →</button>
+            <p class="entry-note">A support assistant is ready to help you investigate. You stay in control of all actions.</p>
         </div>
     </div>
 
@@ -82,6 +82,7 @@
                         <button class="tab active" data-tab="cluster">Cluster</button>
                         <button class="tab" data-tab="logs">Logs</button>
                         <button class="tab" data-tab="topology">Topology</button>
+                        <button class="tab" data-tab="terminal">Terminal</button>
                     </div>
                 </div>
                 <div class="context-content" id="context-content">
@@ -119,6 +120,28 @@
                     <div class="context-view" id="view-topology">
                         <div class="topology-diagram" id="topology-diagram">
                             <!-- SVG topology injected by JS -->
+                        </div>
+                    </div>
+                    <!-- Sandbox Terminal View -->
+                    <div class="context-view" id="view-terminal">
+                        <div class="terminal-container">
+                            <div class="terminal-header-bar">
+                                <span class="terminal-title">🖥️ Sandbox Terminal</span>
+                                <span class="terminal-env">prod-east-1 | eks-node-role-prod</span>
+                            </div>
+                            <div class="terminal-output" id="terminal-output">
+                                <div class="terminal-line system">Connected to sandbox environment. Commands run against your account with audit logging enabled.</div>
+                                <div class="terminal-line system">Type a command or click a suggested command from the AI chat.</div>
+                            </div>
+                            <div class="terminal-input-area">
+                                <span class="terminal-prompt">$</span>
+                                <input type="text" id="terminal-input" placeholder="Enter command..." />
+                                <button id="terminal-run-btn" class="btn-terminal-run">Run</button>
+                            </div>
+                        </div>
+                        <!-- Suggested commands queue -->
+                        <div class="suggested-commands" id="suggested-commands">
+                            <div class="suggested-header">📋 Suggested Commands (click to load)</div>
                         </div>
                     </div>
                 </div>

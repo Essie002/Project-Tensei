@@ -185,15 +185,15 @@ const scenario = [
     {
         delay: 1000,
         action: 'ai_message',
-        text: `Hi — I've been watching your cluster for the past 12 minutes. Here's what I see:\n\n• <span class="highlight">47 pod restarts</span> across 3 pods in <code>prod-east-1</code>\n• All failing with <code>ImagePullBackOff</code> errors\n• Pattern started at 10:29 after a deployment update\n\nIs this what brought you here today?`,
-        trail: { text: 'AI detected 47 pod restarts — ImagePullBackOff pattern', actor: 'AI Agent' }
+        text: `Hi — your CloudWatch alarm <code>EKS-PodRestart-Critical</code> triggered 12 minutes ago. Here's what the alarm data shows:<br><br><strong>Summary:</strong><br>1. <span class="highlight">47 pod restarts</span> across 3 pods in <code>prod-east-1</code><br>2. All failing with <code>ImagePullBackOff</code> errors<br>3. Pattern started at 10:29 — coincides with a recent deployment<br><br>Would you like me to help investigate this? I can suggest diagnostic commands for you to run.`,
+        trail: { text: 'CloudWatch alarm data reviewed — 47 pod restarts, ImagePullBackOff', actor: 'AI Agent' }
     },
     // Step 1: Quick response options
     {
         delay: 500,
         action: 'quick_options',
         options: [
-            { text: "Yes, that's exactly it", id: 'confirm' },
+            { text: "Yes, help me investigate", id: 'confirm' },
             { text: "Tell me more about the errors", id: 'more' },
             { text: "It's something else", id: 'other' }
         ]
@@ -214,8 +214,8 @@ const scenario = [
     {
         delay: 2500,
         action: 'ai_message',
-        text: `Got it. Let me dig deeper. I'm checking three things simultaneously:\n\n1. 🔍 ECR repository permissions\n2. 🔍 Image tag existence in the registry\n3. 🔍 Node IAM role configuration\n\nYou can watch the results stream into the Context Panel on the right.`,
-        trail: { text: 'AI running parallel checks: ECR permissions, image tag, IAM role', actor: 'AI Agent' }
+        text: `Based on the alarm data and error pattern, I'd like to check three things:<br><br>1. 🔍 ECR repository permissions<br>2. 🔍 Image tag existence in the registry<br>3. 🔍 Node IAM role configuration<br><br>I'll suggest commands in the Terminal tab for you to run. The results will appear in the Context Panel as you execute them.`,
+        trail: { text: 'AI recommending checks: ECR permissions, image tag, IAM role', actor: 'AI Agent' }
     },
     // Step 4: First finding
     {
@@ -225,7 +225,7 @@ const scenario = [
     {
         delay: 2000,
         action: 'ai_message',
-        text: `<span class="highlight">Found it.</span> Your node IAM role (<code>eks-node-role-prod</code>) is missing ECR pull permissions for the <code>api-server</code> repository.\n\nSpecifically, it's missing:\n• <code>ecr:GetDownloadUrlForLayer</code>\n• <code>ecr:BatchGetImage</code>\n• <code>ecr:GetAuthorizationToken</code>\n\nThis is why every pod restart fails — the nodes can't pull the container image. Would you like me to fix this?`,
+        text: `<span class="highlight">Root cause identified.</span><br><br><strong>Problem:</strong> Based on the error logs, your node IAM role (<code>eks-node-role-prod</code>) appears to be missing ECR pull permissions.<br><br><strong>Evidence from logs:</strong><br>1. <code>403 Forbidden</code> responses when pulling from ECR<br>2. <code>ecr:GetDownloadUrlForLayer</code> — permission denied<br>3. <code>ecr:BatchGetImage</code> — permission denied<br><br><strong>Impact:</strong> Nodes cannot authenticate to pull the container image → every pod restart fails with ImagePullBackOff.<br><br>I have a suggested fix ready. Would you like to see it?`,
         trail: { text: 'ROOT CAUSE: Node IAM role missing ECR pull permissions', actor: 'AI Agent' }
     },
     // Step 5: Quick response for fix
@@ -233,20 +233,54 @@ const scenario = [
         delay: 500,
         action: 'quick_options',
         options: [
-            { text: "Yes, fix it", id: 'fix' },
-            { text: "Show me what you'll change first", id: 'show' },
-            { text: "I'll fix it manually", id: 'manual' }
+            { text: "Show me the fix", id: 'show' },
+            { text: "I'll investigate manually", id: 'manual' }
         ]
     },
-    // Step 6: Customer approves fix (branching handled in handleQuickResponse)
+    // Step 6: Customer asks to see fix
     {
         delay: 0,
         action: 'await_customer',
-        trigger: 'fix',
-        customerText: "Yes, fix it please.",
-        trail: { text: 'Customer approved: apply ECR permission fix', actor: 'Customer', actorClass: 'customer' }
+        trigger: 'show',
+        customerText: "Show me what needs to change.",
+        trail: { text: 'Customer requested: show proposed fix', actor: 'Customer', actorClass: 'customer' }
     },
-    // Step 7: AI applies fix
+    // Step 7: AI suggests the command (doesn't run it)
+    {
+        delay: 1500,
+        action: 'ai_typing'
+    },
+    {
+        delay: 1000,
+        action: 'suggest_command',
+        command: 'aws iam attach-role-policy --role-name eks-node-role-prod --policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly',
+        source: 'AI Agent',
+        description: 'Attach ECR read-only policy to node role'
+    },
+    {
+        delay: 500,
+        action: 'ai_message',
+        text: `Here's my recommended fix. I've loaded the command into your <strong>Sandbox Terminal</strong> (Terminal tab in Context Panel):<br><br><strong>Command:</strong><br><code>aws iam attach-role-policy --role-name eks-node-role-prod --policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly</code><br><br><strong>What it does:</strong><br>1. Attaches the AWS-managed <code>AmazonEC2ContainerRegistryReadOnly</code> policy<br>2. Grants read-only ECR pull permissions to your node role<br>3. No write or delete access — safe for production<br><br><strong>Next step:</strong> Review and run the command in the Terminal when ready. I'll monitor for pod recovery.`,
+        trail: { text: 'AI suggested fix: attach ECR policy to node role (awaiting customer execution)', actor: 'AI Agent' }
+    },
+    // Step 8: Wait for customer to run the command
+    {
+        delay: 500,
+        action: 'quick_options',
+        options: [
+            { text: "Done — I've run it", id: 'ran_command' },
+            { text: "What does this policy include?", id: 'show_policy' }
+        ]
+    },
+    // Step 9: Customer confirms they ran it
+    {
+        delay: 0,
+        action: 'await_customer',
+        trigger: 'ran_command',
+        customerText: "Done, I've run the command.",
+        trail: { text: 'Customer executed: IAM policy attachment', actor: 'Customer', actorClass: 'customer' }
+    },
+    // Step 10: AI confirms and surfaces secondary issue
     {
         delay: 1500,
         action: 'ai_typing'
@@ -259,8 +293,8 @@ const scenario = [
     {
         delay: 2500,
         action: 'ai_message',
-        text: `Done. ✅ I've attached the <code>AmazonEC2ContainerRegistryReadOnly</code> policy to your node role.\n\nPods should start pulling the image within the next 30–60 seconds. I'm monitoring...\n\n<em>However</em> — I've noticed something else. There may be a <strong>NetworkPolicy</strong> egress rule that could also block image pulls from the ECR endpoint. My confidence on this one is only <span class="highlight">45%</span> — I'd like to bring in a networking specialist to verify.\n\nWould you like me to connect you with someone?`,
-        trail: { text: 'ECR permissions fixed ✅ — Secondary issue: NetworkPolicy (45% confidence)', actor: 'AI Agent' }
+        text: `Policy confirmed attached. ✅ Monitoring pod recovery...<br><br><strong>Status update:</strong><br>1. ✅ ECR permissions — fixed<br>2. ⏳ Pods retrying image pull — in progress<br><br><em>However</em> — I've identified a potential secondary issue:<br><br><strong>Concern:</strong> A NetworkPolicy egress rule may also be blocking image pulls from the ECR endpoint.<br><strong>Confidence:</strong> <span class="highlight">45%</span> — not high enough for me to recommend a fix alone.<br><br>I'd like to bring in a networking specialist to verify. Would you like me to connect you with someone?`,
+        trail: { text: 'ECR permissions confirmed ✅ — Secondary issue: NetworkPolicy (45% confidence)', actor: 'AI Agent' }
     },
     // Step 8: Consent for escalation
     {
@@ -306,22 +340,30 @@ const scenario = [
     {
         delay: 2000,
         action: 'engineer_message',
-        text: `Hi! I can see the AI already identified and fixed the ECR permission issue — nice catch. Let me look at the NetworkPolicy angle. I'm checking your egress rules now.`
+        text: `Hi there! I'm Sarah, a networking specialist. I can see this has been a stressful one — production app down is never fun. Let's get you fully sorted.<br><br>I've reviewed everything the AI investigated so far. The ECR permission fix looks good. Let me now focus on the NetworkPolicy angle — I'll have an answer for you shortly.`
     },
     // Step 15: Engineer finding
     {
         delay: 3500,
         action: 'engineer_message',
-        text: `Found it. You have a NetworkPolicy that restricts egress to specific CIDR blocks, but it doesn't include the ECR VPC endpoint range. Even with IAM permissions fixed, the pod network can't reach ECR.\n\nI'd recommend adding the ECR VPC endpoint to your egress allowlist. Want me to apply that?`,
+        text: `<strong>Finding confirmed:</strong><br><br>Your NetworkPolicy <code>api-egress</code> restricts outbound traffic to a specific set of CIDR blocks, but it <strong>does not include</strong> the ECR VPC endpoint range (<code>10.0.1.0/24</code>).<br><br><strong>What this means:</strong><br>Even though IAM permissions are now correct, the pod's network traffic is being dropped before it reaches ECR.<br><br><strong>Suggested fix:</strong><br>I've loaded a <code>kubectl patch</code> command into your Terminal that adds the ECR endpoint CIDR to your egress allowlist.<br><br><strong>Steps:</strong><br>1. Switch to the Terminal tab<br>2. Review the command (click it from Suggested Commands to load)<br>3. Run it when you're satisfied<br><br>This only opens port 443 to that specific CIDR — no broad egress changes. Let me know when you've run it.`,
         trail: { text: 'Sarah confirmed: NetworkPolicy blocking ECR VPC endpoint egress', actor: 'Sarah K.', actorClass: 'engineer' }
+    },
+    // Step 15b: Engineer suggests command
+    {
+        delay: 1000,
+        action: 'suggest_command',
+        command: 'kubectl patch networkpolicy api-egress -n default --type=json -p \'[{"op":"add","path":"/spec/egress/-","value":{"to":[{"ipBlock":{"cidr":"10.0.1.0/24"}}],"ports":[{"port":443,"protocol":"TCP"}]}}]\'',
+        source: 'Sarah K.',
+        description: 'Add ECR VPC endpoint CIDR to NetworkPolicy egress rules'
     },
     // Step 16: Final quick options
     {
         delay: 500,
         action: 'quick_options',
         options: [
-            { text: "Yes, apply it", id: 'final_fix' },
-            { text: "Show me the YAML change", id: 'show_yaml' }
+            { text: "Done — I've run it", id: 'final_fix' },
+            { text: "Explain this command first", id: 'explain_cmd' }
         ]
     },
     // Step 17: Resolution
@@ -329,17 +371,22 @@ const scenario = [
         delay: 0,
         action: 'await_customer',
         trigger: 'final_fix',
-        customerText: "Yes, let's apply it."
+        customerText: "Applied. Let me know if it looks good."
     },
     {
         delay: 2000,
         action: 'engineer_message',
-        text: `Applied. ✅ Your pods should be fully healthy within a minute. I'll stay here until we confirm they're stable.`
+        text: `I can see the egress rule is now in place. ✅ Pods are recovering — let me monitor for a moment to confirm full stability.`
+    },
+    {
+        delay: 3000,
+        action: 'engineer_message',
+        text: `All clear. ✅ All 3 pods are running healthy and pulling images without issues.<br><br><strong>📋 Session Summary:</strong><br><br><strong>What was wrong:</strong><br>1. <strong>Primary issue:</strong> The node IAM role (<code>eks-node-role-prod</code>) was missing ECR pull permissions — pods couldn't authenticate to download container images.<br>2. <strong>Secondary issue:</strong> A NetworkPolicy egress rule was blocking outbound traffic on port 443 to the ECR VPC endpoint CIDR — even with correct permissions, the network layer was dropping the connection.<br><br><strong>What was fixed:</strong><br>1. Attached <code>AmazonEC2ContainerRegistryReadOnly</code> policy to the node role<br>2. Patched NetworkPolicy <code>api-egress</code> to allow TCP/443 to <code>10.0.1.0/24</code><br><br><strong>📖 Helpful AWS documentation:</strong><br>• <a href="#">Amazon ECR: Private registry authentication</a><br>• <a href="#">Amazon EKS: Cluster IAM role permissions</a><br>• <a href="#">Kubernetes NetworkPolicy: Egress rules best practices</a><br><br><strong>💡 Recommendation:</strong> Consider adding ECR VPC endpoint CIDRs to your NetworkPolicy templates to prevent this from recurring on future deployments.<br><br>It was great working with you — don't hesitate to reach out if anything else comes up! 👋`
     },
     {
         delay: 2500,
         action: 'ai_message',
-        text: `Confirming: all 3 affected pods are now in <span class="highlight">Running</span> state. No more CrashLoopBackOff events. Your application is back online. 🎉\n\n<strong>Summary of what we did:</strong>\n1. ✅ Fixed IAM ECR permissions (node role)\n2. ✅ Fixed NetworkPolicy egress rule (VPC endpoint)\n\nIs there anything else I can help with?`,
+        text: `All pods confirmed healthy. ✅ Your application is back online. 🎉<br><br><strong>Resolution summary:</strong><br>1. ✅ Fixed IAM ECR permissions — attached <code>AmazonEC2ContainerRegistryReadOnly</code> to node role<br>2. ✅ Fixed NetworkPolicy egress — added ECR VPC endpoint CIDR to allowlist<br><br><strong>Root causes:</strong><br>• Primary: Node role lacked ECR pull permissions after recent role update<br>• Secondary: NetworkPolicy blocked outbound traffic to ECR VPC endpoint<br><br>Is there anything else I can help with?`,
         trail: { text: 'RESOLVED — All pods healthy. Application online.', actor: 'AI Agent' }
     },
     // Step 18: Update cluster view
@@ -396,7 +443,6 @@ function executeStep(step) {
 
         case 'show_handover':
             handoverModal.classList.remove('hidden');
-            setTimeout(() => handoverModal.classList.add('hidden'), 4000);
             break;
 
         case 'engineer_connecting':
@@ -429,6 +475,10 @@ function executeStep(step) {
         case 'update_context':
             if (step.contextFn === 'showECRFixApplied') showECRFixApplied();
             if (step.contextFn === 'showPartialRecovery') showPartialRecovery();
+            break;
+
+        case 'suggest_command':
+            addSuggestedCommand(step.command, step.source, step.description);
             break;
     }
 }
@@ -486,29 +536,25 @@ function handleQuickResponse(id, text) {
     if (id === 'show') {
         // Customer wants to see what will change before approving
         addTrailEntry({ text: 'Customer requested: show proposed changes', actor: 'Customer', actorClass: 'customer' });
-        setTimeout(() => showTypingIndicator(), 500);
-        setTimeout(() => {
-            removeTypingIndicator();
-            addMessage('ai', 'AI Agent', `Here's what I'll change on your node IAM role <code>eks-node-role-prod</code>:\n\n<strong>Action:</strong> Attach policy <code>AmazonEC2ContainerRegistryReadOnly</code>\n\n<strong>This adds:</strong>\n• <code>ecr:GetDownloadUrlForLayer</code>\n• <code>ecr:BatchGetImage</code>\n• <code>ecr:GetAuthorizationToken</code>\n• <code>ecr:BatchCheckLayerAvailability</code>\n• <code>ecr:DescribeRepositories</code>\n\n<strong>Scope:</strong> Read-only access to all ECR repositories in this account. No write/delete permissions.\n\nShall I apply this?`);
-            showQuickOptions([
-                { text: "Yes, apply it", id: 'fix' },
-                { text: "No, I'll do it manually", id: 'manual' }
-            ]);
-        }, 2000);
+        // Advance the scenario past the await_customer step
+        const awaitStep = scenario[currentScenarioIndex];
+        if (awaitStep && awaitStep.action === 'await_customer') {
+            if (awaitStep.trail) addTrailEntry(awaitStep.trail);
+            currentScenarioIndex++;
+            processNextStep();
+        }
         return;
     }
 
     if (id === 'manual') {
-        addTrailEntry({ text: 'Customer chose: manual fix', actor: 'Customer', actorClass: 'customer' });
+        addTrailEntry({ text: 'Customer chose: manual investigation', actor: 'Customer', actorClass: 'customer' });
         setTimeout(() => {
-            addMessage('ai', 'AI Agent', `No problem. Here's what you need to do:\n\n1. Go to <strong>IAM → Roles → eks-node-role-prod</strong>\n2. Attach the managed policy <code>AmazonEC2ContainerRegistryReadOnly</code>\n3. Wait 30–60 seconds for pods to retry the image pull\n\nI'll keep monitoring. Let me know once you've applied it and I'll verify the pods recover.\n\nIn the meantime — I've noticed a potential secondary issue with a NetworkPolicy egress rule. My confidence is only <span class="highlight">45%</span> on this one. Want me to bring in a networking specialist to verify?`);
-            addTrailEntry({ text: 'AI provided manual fix instructions — monitoring for recovery', actor: 'AI Agent' });
-            // Skip ahead to the escalation options
+            addMessage('ai', 'AI Agent', `No problem. Here's what you need to do:<br><br><strong>Steps to fix:</strong><br>1. Go to <strong>IAM → Roles → eks-node-role-prod</strong><br>2. Click "Attach policies"<br>3. Search for <code>AmazonEC2ContainerRegistryReadOnly</code><br>4. Attach the policy<br>5. Wait 30–60 seconds for pods to retry the image pull<br><br>I'll keep monitoring. Let me know once applied and I'll verify recovery.<br><br><em>Note:</em> I've also identified a potential secondary issue with a NetworkPolicy egress rule (confidence: <span class="highlight">45%</span>). Want me to bring in a networking specialist to verify?`);
+            addTrailEntry({ text: 'AI provided manual fix steps — monitoring for recovery', actor: 'AI Agent' });
             showQuickOptions([
                 { text: "Yes, bring someone in", id: 'escalate' },
                 { text: "Let's wait and see first", id: 'wait' }
             ]);
-            // Set scenario index to the escalation await step
             currentScenarioIndex = scenario.findIndex(s => s.action === 'await_customer' && s.trigger === 'escalate');
         }, 2000);
         return;
@@ -519,7 +565,7 @@ function handleQuickResponse(id, text) {
         setTimeout(() => showTypingIndicator(), 500);
         setTimeout(() => {
             removeTypingIndicator();
-            addMessage('ai', 'AI Agent', `Here's the breakdown:\n\n• <strong>3 pods affected:</strong> <code>api-server-7d4f8</code>, <code>api-server-a3c21</code>, <code>worker-bf892</code>\n• <strong>Error pattern:</strong> All failing with <code>ImagePullBackOff</code> → the node can't download the container image from ECR\n• <strong>Root cause signal:</strong> Logs show <code>403 Forbidden</code> when pulling from your ECR registry\n• <strong>Timeline:</strong> Started 12 min ago, coincides with a deployment at 10:29\n\nThis looks like a permissions issue — the nodes lost the ability to pull images. Want me to dig into the IAM configuration?`);
+            addMessage('ai', 'AI Agent', `Here's the full breakdown:<br><br><strong>Affected pods (3):</strong><br>1. <code>api-server-7d4f8</code> — CrashLoopBackOff<br>2. <code>api-server-a3c21</code> — CrashLoopBackOff<br>3. <code>worker-bf892</code> — ImagePullBackOff<br><br><strong>Error pattern:</strong><br>• All failing with <code>ImagePullBackOff</code> → nodes cannot download the container image from ECR<br>• Logs show <code>403 Forbidden</code> when pulling from your ECR registry<br><br><strong>Timeline:</strong><br>• Started 12 minutes ago at 10:29<br>• Coincides with a deployment update to <code>prod-east-1</code><br><br>This looks like a permissions issue — the nodes lost the ability to pull images. Want me to dig into the IAM configuration?`);
             showQuickOptions([
                 { text: "Yes, investigate", id: 'confirm' },
                 { text: "That's my issue, fix it", id: 'confirm' }
@@ -539,12 +585,12 @@ function handleQuickResponse(id, text) {
     if (id === 'wait') {
         addTrailEntry({ text: 'Customer chose to wait before escalating', actor: 'Customer', actorClass: 'customer' });
         setTimeout(() => {
-            addMessage('ai', 'AI Agent', `Understood. I'll keep monitoring the pods. If the issue persists after the permission fix takes effect, I'll flag it.`);
+            addMessage('ai', 'AI Agent', `Understood. I'll keep monitoring pod recovery and flag if the issue persists.`);
         }, 1000);
         setTimeout(() => {
             // Sync: update context panel to show partial recovery
             showPartialRecovery();
-            addMessage('ai', 'AI Agent', `Update: 2 out of 3 pods are now pulling images successfully ✅ — but <code>api-server-a3c21</code> on <code>node-3a</code> is still failing with a <strong>network timeout</strong> trying to reach the ECR endpoint.\n\nYou can see it in the Logs panel — the error is <code>dial tcp 10.0.1.45:443 — connection timed out</code>. This is consistent with a NetworkPolicy blocking egress.\n\nI'd recommend bringing in a networking specialist. Want me to connect you?`);
+            addMessage('ai', 'AI Agent', `<strong>Status update:</strong><br><br>1. ✅ <code>api-server-7d4f8</code> — image pulled successfully, container running<br>2. ✅ <code>worker-bf892</code> — image pulled successfully, container running<br>3. ❌ <code>api-server-a3c21</code> on <code>node-3a</code> — still failing<br><br><strong>Error on failing pod:</strong><br><code>dial tcp 10.0.1.45:443 — connection timed out</code><br><br><strong>Analysis:</strong> This is a network-level block, not a permissions issue. Consistent with a NetworkPolicy egress rule preventing outbound traffic to the ECR VPC endpoint.<br><br>I'd recommend bringing in a networking specialist to confirm. Want me to connect you?`);
             addTrailEntry({ text: 'Partial recovery — 2/3 pods healthy. api-server-a3c21 blocked by NetworkPolicy.', actor: 'AI Agent' });
             showQuickOptions([
                 { text: "Yes, bring someone in", id: 'escalate' },
@@ -553,6 +599,48 @@ function handleQuickResponse(id, text) {
         }, 4000);
         // Set scenario index to the escalation await step
         currentScenarioIndex = scenario.findIndex(s => s.action === 'await_customer' && s.trigger === 'escalate');
+        return;
+    }
+
+    if (id === 'show_policy') {
+        addTrailEntry({ text: 'Customer requested policy details', actor: 'Customer', actorClass: 'customer' });
+        setTimeout(() => {
+            addMessage('ai', 'AI Agent', `The <code>AmazonEC2ContainerRegistryReadOnly</code> policy grants:\n\n• <code>ecr:GetDownloadUrlForLayer</code>\n• <code>ecr:BatchGetImage</code>\n• <code>ecr:GetAuthorizationToken</code>\n• <code>ecr:BatchCheckLayerAvailability</code>\n• <code>ecr:DescribeRepositories</code>\n\n<strong>Scope:</strong> Read-only. No ability to push, delete, or modify images. Safe to apply to node roles.\n\nGo ahead and run the command in the Terminal when you're ready.`);
+            showQuickOptions([
+                { text: "Done — I've run it", id: 'ran_command' }
+            ]);
+        }, 1500);
+        return;
+    }
+
+    if (id === 'explain_cmd') {
+        addTrailEntry({ text: 'Customer requested command explanation', actor: 'Customer', actorClass: 'customer' });
+        setTimeout(() => {
+            addEngineerMessage(`Sure! Here's what that kubectl patch does:\n\n• <strong>Target:</strong> NetworkPolicy named "api-egress" in the default namespace\n• <strong>Action:</strong> Adds a new egress rule allowing outbound TCP/443 to the CIDR 10.0.1.0/24\n• <strong>Why 10.0.1.0/24:</strong> That's your VPC endpoint range for ECR — the pod needs to reach that IP to pull images\n• <strong>Effect:</strong> Only opens port 443 to that specific CIDR. No broad egress changes.\n\nIt's safe to run. Let me know once applied.`);
+            showQuickOptions([
+                { text: "Done — I've run it", id: 'final_fix' }
+            ]);
+        }, 1500);
+        return;
+    }
+
+    if (id === 'ran_command') {
+        // Advance to the next step (same as confirming fix)
+        const awaitStep = scenario[currentScenarioIndex];
+        if (awaitStep && awaitStep.action === 'await_customer') {
+            if (awaitStep.trail) addTrailEntry(awaitStep.trail);
+            currentScenarioIndex++;
+            processNextStep();
+        }
+        return;
+    }
+
+    if (id === 'manual_end') {
+        addTrailEntry({ text: 'Customer chose to investigate independently', actor: 'Customer', actorClass: 'customer' });
+        setTimeout(() => {
+            addMessage('ai', 'AI Agent', `No problem. I've loaded a diagnostic command into your Terminal: <code>kubectl describe pod api-server-a3c21 -n default</code>. Check the Terminal tab.\n\nI'll stay here if you need me. Just let me know.`);
+            addSuggestedCommand('kubectl describe pod api-server-a3c21 -n default', 'AI Agent', 'Inspect failing pod events and status');
+        }, 1000);
         return;
     }
 
@@ -790,6 +878,135 @@ function sendCustomerMessage() {
     }
 }
 
+
+// ===== SANDBOX TERMINAL =====
+const terminalOutput = document.getElementById('terminal-output');
+const terminalInput = document.getElementById('terminal-input');
+const terminalRunBtn = document.getElementById('terminal-run-btn');
+const suggestedCommandsEl = document.getElementById('suggested-commands');
+
+function addSuggestedCommand(command, source, description) {
+    const cmdEl = document.createElement('div');
+    cmdEl.className = 'suggested-cmd';
+    cmdEl.innerHTML = `
+        <div style="flex:1">
+            <div class="suggested-cmd-text">${command}</div>
+            <div style="font-size:0.65rem; color:var(--text-muted); margin-top:4px;">${description}</div>
+        </div>
+        <span class="suggested-cmd-source">${source}</span>
+        <span class="suggested-cmd-status pending">Pending</span>
+    `;
+    cmdEl.addEventListener('click', () => {
+        // Load command into terminal input
+        terminalInput.value = command;
+        // Switch to terminal tab
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelector('[data-tab="terminal"]').classList.add('active');
+        document.querySelectorAll('.context-view').forEach(v => v.classList.remove('active'));
+        document.getElementById('view-terminal').classList.add('active');
+        // Mark as loaded
+        cmdEl.querySelector('.suggested-cmd-status').textContent = 'Loaded';
+        cmdEl.querySelector('.suggested-cmd-status').className = 'suggested-cmd-status approved';
+        // Flash the terminal tab
+        document.querySelector('[data-tab="terminal"]').style.background = 'var(--accent-green)';
+        setTimeout(() => {
+            document.querySelector('[data-tab="terminal"]').style.background = '';
+        }, 1000);
+    });
+    suggestedCommandsEl.appendChild(cmdEl);
+
+    // Flash the terminal tab to draw attention
+    const termTab = document.querySelector('[data-tab="terminal"]');
+    termTab.style.background = 'var(--accent-orange)';
+    termTab.style.color = '#000';
+    setTimeout(() => {
+        termTab.style.background = '';
+        termTab.style.color = '';
+    }, 2000);
+}
+
+// Simulated terminal command execution
+const terminalResponses = {
+    'aws iam attach-role-policy': [
+        { type: 'output', text: 'Attaching policy to role eks-node-role-prod...' },
+        { type: 'success', text: '✓ Policy AmazonEC2ContainerRegistryReadOnly attached successfully.' },
+        { type: 'output', text: 'Effective immediately. Pods will retry image pull on next restart cycle.' },
+    ],
+    'kubectl patch networkpolicy': [
+        { type: 'output', text: 'networkpolicy.networking.k8s.io/api-egress patched' },
+        { type: 'success', text: '✓ Egress rule added: allow TCP/443 to 10.0.1.0/24 (ECR VPC endpoint)' },
+        { type: 'output', text: 'Pods affected: api-server-a3c21 (will retry on next cycle)' },
+    ],
+    'kubectl get pods': [
+        { type: 'output', text: 'NAME                    READY   STATUS             RESTARTS   AGE' },
+        { type: 'output', text: 'api-server-7d4f8        1/1     Running            48         2h' },
+        { type: 'output', text: 'api-server-a3c21        0/1     ImagePullBackOff   52         2h' },
+        { type: 'output', text: 'worker-bf892            1/1     Running            12         2h' },
+    ],
+    'kubectl describe pod': [
+        { type: 'output', text: 'Events:' },
+        { type: 'output', text: '  Warning  Failed     2m   kubelet  Failed to pull image: dial tcp 10.0.1.45:443 — connection timed out' },
+        { type: 'output', text: '  Warning  Failed     1m   kubelet  Back-off pulling image' },
+        { type: 'error', text: '  Normal   BackOff    30s  kubelet  Back-off restarting failed container' },
+    ],
+};
+
+function runTerminalCommand(command) {
+    if (!command.trim()) return;
+
+    // Show the command
+    const cmdLine = document.createElement('div');
+    cmdLine.className = 'terminal-line command';
+    cmdLine.textContent = command;
+    terminalOutput.appendChild(cmdLine);
+
+    // Find matching response
+    let response = null;
+    for (const key of Object.keys(terminalResponses)) {
+        if (command.includes(key)) {
+            response = terminalResponses[key];
+            break;
+        }
+    }
+
+    if (response) {
+        // Simulate delayed output
+        response.forEach((line, i) => {
+            setTimeout(() => {
+                const el = document.createElement('div');
+                el.className = `terminal-line ${line.type}`;
+                el.textContent = line.text;
+                terminalOutput.appendChild(el);
+                terminalOutput.scrollTop = terminalOutput.scrollHeight;
+            }, 500 + (i * 400));
+        });
+    } else {
+        setTimeout(() => {
+            const el = document.createElement('div');
+            el.className = 'terminal-line error';
+            el.textContent = `command not found: ${command.split(' ')[0]}`;
+            terminalOutput.appendChild(el);
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        }, 300);
+    }
+
+    // Update suggested command status if it matches
+    suggestedCommandsEl.querySelectorAll('.suggested-cmd').forEach(cmd => {
+        const cmdText = cmd.querySelector('.suggested-cmd-text').textContent;
+        if (command.includes(cmdText.substring(0, 30)) || cmdText.includes(command.substring(0, 30))) {
+            cmd.querySelector('.suggested-cmd-status').textContent = 'Executed';
+            cmd.querySelector('.suggested-cmd-status').className = 'suggested-cmd-status run';
+        }
+    });
+
+    terminalInput.value = '';
+    terminalOutput.scrollTop = terminalOutput.scrollHeight;
+}
+
+terminalRunBtn.addEventListener('click', () => runTerminalCommand(terminalInput.value));
+terminalInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') runTerminalCommand(terminalInput.value);
+});
 
 // ===== RESIZABLE PANELS =====
 function initResize() {
