@@ -1,6 +1,64 @@
 // ===== PROJECT TENSEI — PROTOTYPE ENGINE =====
 // Simulates the EKS CrashLoopBackOff scenario end-to-end
 
+// ===== SUPPORT TIER CONFIGURATION =====
+// Change this value to demo different tiers: 'basic', 'developer', 'business', 'enterprise'
+const SUPPORT_TIER = 'enterprise';
+
+const TIER_CONFIG = {
+    basic: {
+        label: 'Basic Support',
+        color: '#888',
+        contactMethods: [],
+        hasEngineer: false,
+        hasChat: false,
+        hasPhone: false,
+        hasEmail: false,
+        engineerResponseTime: null,
+        description: 'Documentation & community forums only',
+        slaNote: 'No technical support included — upgrade for live assistance'
+    },
+    developer: {
+        label: 'Developer Support',
+        color: '#4da6ff',
+        contactMethods: ['email'],
+        hasEngineer: true,
+        hasChat: false,
+        hasPhone: false,
+        hasEmail: true,
+        engineerResponseTime: '12–24 hours',
+        description: 'Email support during business hours',
+        slaNote: 'Engineer response via email within 12–24 hours'
+    },
+    business: {
+        label: 'Business Support',
+        color: '#ffc107',
+        contactMethods: ['chat', 'phone', 'email'],
+        hasEngineer: true,
+        hasChat: true,
+        hasPhone: true,
+        hasEmail: true,
+        engineerResponseTime: '~1 hour',
+        description: '24/7 chat, phone & email support',
+        slaNote: 'Engineer response within 1 hour for critical issues'
+    },
+    enterprise: {
+        label: 'Enterprise Support',
+        color: '#ff9900',
+        contactMethods: ['chat', 'phone', 'email'],
+        hasEngineer: true,
+        hasChat: true,
+        hasPhone: true,
+        hasEmail: true,
+        hasTAM: true,
+        engineerResponseTime: '~2 minutes',
+        description: 'Priority 24/7 support + TAM escalation available',
+        slaNote: 'Priority response — engineer within 15 minutes for critical'
+    }
+};
+
+const currentTier = TIER_CONFIG[SUPPORT_TIER];
+
 // ===== STATE =====
 let sessionSeconds = 0;
 let scenarioStep = 0;
@@ -26,6 +84,27 @@ const contextTabs = document.querySelectorAll('.tab');
 const aiStatus = document.getElementById('ai-status');
 
 // ===== ENTRY POINT =====
+// Populate entry screen with tier info
+(function initEntryScreen() {
+    const tierInfo = document.getElementById('entry-tier-info');
+    if (tierInfo) {
+        const methods = ['Chat', 'Phone', 'Email'];
+        const methodBadges = methods.map(m => {
+            const key = m.toLowerCase();
+            const available = currentTier.contactMethods.includes(key);
+            return `<span class="entry-method-badge ${available ? 'available' : 'unavailable'}">${available ? '✓' : '✗'} ${m}</span>`;
+        }).join('');
+
+        tierInfo.innerHTML = `
+            <div class="entry-tier-label">Detected Support Plan</div>
+            <div class="entry-tier-name" style="color:${currentTier.color}">${currentTier.label}</div>
+            <div class="entry-tier-desc">${currentTier.description}</div>
+            <div class="entry-tier-methods">${methodBadges}</div>
+            ${currentTier.hasTAM ? '<div style="font-size:0.65rem; color:var(--text-muted); margin-top:6px;">TAM escalation available via your support engineer</div>' : ''}
+        `;
+    }
+})();
+
 enterBtn.addEventListener('click', () => {
     entryScreen.classList.remove('active');
     workspaceScreen.classList.add('active');
@@ -48,6 +127,9 @@ contextTabs.forEach(tab => {
 
 // ===== SESSION START =====
 function startSession() {
+    // Apply support tier to UI
+    applyTierConfig();
+
     timerInterval = setInterval(() => {
         sessionSeconds++;
         const min = String(Math.floor(sessionSeconds / 60)).padStart(2, '0');
@@ -59,6 +141,39 @@ function startSession() {
     initLogs();
     initTopology();
     runScenario();
+}
+
+function applyTierConfig() {
+    // Update header badge
+    const tierBadge = document.getElementById('support-tier');
+    tierBadge.textContent = currentTier.label;
+    tierBadge.style.color = currentTier.color;
+    tierBadge.style.background = `${currentTier.color}22`;
+
+    // Show/hide contact method buttons
+    const contactMethodsEl = document.getElementById('contact-methods');
+    if (contactMethodsEl) {
+        contactMethodsEl.innerHTML = '';
+        if (currentTier.hasChat) {
+            contactMethodsEl.innerHTML += '<button class="contact-btn active"><span>💬</span> Chat</button>';
+        }
+        if (currentTier.hasPhone) {
+            contactMethodsEl.innerHTML += '<button class="contact-btn"><span>📞</span> Phone</button>';
+        }
+        if (currentTier.hasEmail) {
+            contactMethodsEl.innerHTML += '<button class="contact-btn"><span>✉️</span> Email</button>';
+        }
+        if (currentTier.contactMethods.length === 0) {
+            contactMethodsEl.innerHTML = '<span class="no-contact">No live support — upgrade your plan for technical assistance</span>';
+        }
+    }
+
+    // If basic tier, disable chat input and show upgrade message
+    if (SUPPORT_TIER === 'basic') {
+        document.getElementById('customer-input').disabled = true;
+        document.getElementById('customer-input').placeholder = 'Live chat not available on Basic plan';
+        document.getElementById('send-btn').disabled = true;
+    }
 }
 
 // ===== CLUSTER VIEW =====
@@ -84,63 +199,26 @@ function initClusterView() {
 
 // ===== LOGS VIEW =====
 function initLogs() {
-    const initialLogs = [
-        { time: '10:41:02', level: 'error', pod: 'api-server-7d4f8', msg: 'Back-off restarting failed container' },
-        { time: '10:41:03', level: 'error', pod: 'api-server-7d4f8', msg: 'ImagePullBackOff: failed to pull image "123456789.dkr.ecr.us-east-1.amazonaws.com/api:latest"' },
-        { time: '10:41:05', level: 'warn', pod: 'worker-bf892', msg: 'Liveness probe failed: connection refused' },
-        { time: '10:41:08', level: 'error', pod: 'api-server-a3c21', msg: 'CrashLoopBackOff: back-off 5m0s restarting failed container' },
+    const redactedLogs = [
+        { time: '10:41:02', level: 'error', pod: 'api-server-*****', msg: 'Back-off restarting failed container' },
+        { time: '10:41:03', level: 'error', pod: 'api-server-*****', msg: 'ImagePullBackOff: failed to pull image "*****.dkr.ecr.*****.amazonaws.com/api:latest"' },
+        { time: '10:41:05', level: 'warn', pod: 'worker-*****', msg: 'Liveness probe failed: connection refused' },
+        { time: '10:41:08', level: 'error', pod: 'api-server-*****', msg: 'CrashLoopBackOff: back-off 5m0s restarting failed container' },
+        { time: '10:41:12', level: 'info', pod: 'scheduler', msg: 'Successfully assigned default/api-server-***** to node-***' },
+        { time: '10:41:15', level: 'error', pod: 'api-server-*****', msg: 'Error: ErrImagePull — 403 Forbidden' },
+        { time: '10:41:18', level: 'error', pod: 'worker-*****', msg: 'ImagePullBackOff: authorization failed for ECR registry' },
+        { time: '10:41:22', level: 'warn', pod: 'api-server-*****', msg: 'Container runtime: pull access denied, requires IAM ECR permissions' },
+        { time: '10:41:25', level: 'error', pod: 'api-server-*****', msg: 'Back-off restarting failed container (restart count: 48)' },
+        { time: '10:41:30', level: 'info', pod: 'kubelet', msg: 'Node node-***: memory pressure threshold exceeded' },
+        { time: '10:41:33', level: 'error', pod: 'api-server-*****', msg: 'Error: ImagePullBackOff — back-off 2m40s pulling image' },
+        { time: '10:41:36', level: 'info', pod: 'kubelet', msg: 'Pulling image "*****.dkr.ecr.*****.amazonaws.com/api:latest"' },
+        { time: '10:41:38', level: 'error', pod: 'api-server-*****', msg: 'Failed to pull image: rpc error: code = Unknown desc = 403 Forbidden' },
+        { time: '10:41:41', level: 'info', pod: 'endpoint-ctrl', msg: 'Endpoints api-service updated: 0 ready, 3 not ready' },
     ];
 
-    logStream.innerHTML = initialLogs.map(l => formatLog(l)).join('');
-
-    // Start streaming new logs every 2-4 seconds
-    startLogStreaming();
-}
-
-const streamingLogs = [
-    { level: 'info', pod: 'scheduler', msg: 'Successfully assigned default/api-server-7d4f8 to node-1b' },
-    { level: 'error', pod: 'api-server-7d4f8', msg: 'Error: ErrImagePull — 403 Forbidden' },
-    { level: 'error', pod: 'worker-bf892', msg: 'ImagePullBackOff: authorization failed for ECR registry' },
-    { level: 'warn', pod: 'api-server-a3c21', msg: 'Container runtime: pull access denied, requires IAM ECR permissions' },
-    { level: 'error', pod: 'api-server-7d4f8', msg: 'Back-off restarting failed container (restart count: 48)' },
-    { level: 'info', pod: 'kubelet', msg: 'Node node-1b: memory pressure threshold exceeded' },
-    { level: 'error', pod: 'api-server-a3c21', msg: 'CrashLoopBackOff: back-off 5m0s restarting failed container' },
-    { level: 'warn', pod: 'worker-bf892', msg: 'Readiness probe failed: HTTP probe failed with statuscode: 503' },
-    { level: 'error', pod: 'api-server-7d4f8', msg: 'Error: ImagePullBackOff — back-off 2m40s pulling image' },
-    { level: 'info', pod: 'kubelet', msg: 'Pulling image "123456789.dkr.ecr.us-east-1.amazonaws.com/api:latest"' },
-    { level: 'error', pod: 'api-server-7d4f8', msg: 'Failed to pull image: rpc error: code = Unknown desc = 403 Forbidden' },
-    { level: 'warn', pod: 'api-server-a3c21', msg: 'Container api-server exceeded memory limit (512Mi)' },
-    { level: 'error', pod: 'worker-bf892', msg: 'CrashLoopBackOff: back-off 1m20s restarting failed container' },
-    { level: 'info', pod: 'endpoint-ctrl', msg: 'Endpoints api-service updated: 0 ready, 3 not ready' },
-    { level: 'error', pod: 'api-server-7d4f8', msg: 'Back-off restarting failed container (restart count: 49)' },
-    { level: 'warn', pod: 'kubelet', msg: 'Node node-3a: pod eviction threshold reached' },
-    { level: 'error', pod: 'api-server-a3c21', msg: 'Error: ErrImagePull — failed to authorize: 403 Forbidden' },
-    { level: 'info', pod: 'scheduler', msg: 'Preempting pod default/api-server-a3c21 on node-3a' },
-];
-
-let logStreamIndex = 0;
-let logStreamInterval = null;
-
-function startLogStreaming() {
-    logStreamInterval = setInterval(() => {
-        const log = streamingLogs[logStreamIndex % streamingLogs.length];
-        const now = new Date();
-        const time = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
-
-        const entry = document.createElement('div');
-        entry.className = 'log-entry';
-        entry.innerHTML = formatLog({ ...log, time });
-
-        logStream.appendChild(entry);
-        logStream.scrollTop = logStream.scrollHeight;
-
-        // Keep max 30 entries visible
-        while (logStream.children.length > 30) {
-            logStream.removeChild(logStream.firstChild);
-        }
-
-        logStreamIndex++;
-    }, 2000 + Math.random() * 2000); // Random 2-4 second interval
+    // Add redaction notice at the top
+    logStream.innerHTML = '<div class="log-entry system" style="color:var(--accent-orange); margin-bottom:8px; font-style:italic;">⚠️ Logs displayed with redacted identifiers (IPs, ARNs, account IDs masked)</div>';
+    logStream.innerHTML += redactedLogs.map(l => `<div class="log-entry">${formatLog(l)}</div>`).join('');
 }
 
 function stopLogStreaming() {
@@ -149,6 +227,8 @@ function stopLogStreaming() {
         logStreamInterval = null;
     }
 }
+
+let logStreamInterval = null;
 
 function formatLog(l) {
     return `<span class="timestamp">[${l.time}]</span> <span class="level-${l.level}">${l.level.toUpperCase()}</span> <span class="pod-name">${l.pod}</span> ${l.msg}`;
@@ -181,32 +261,32 @@ function initTopology() {
 
 // ===== SCENARIO ENGINE =====
 const scenario = [
-    // Step 0: AI greets with context
+    // Step 0: AI greets with only alarm metadata (what AWS can see without consent)
     {
         delay: 1000,
         action: 'ai_message',
-        text: `Hi — your CloudWatch alarm <code>EKS-PodRestart-Critical</code> triggered 12 minutes ago. Here's what the alarm data shows:<br><br><strong>Summary:</strong><br>1. <span class="highlight">47 pod restarts</span> across 3 pods in <code>prod-east-1</code><br>2. All failing with <code>ImagePullBackOff</code> errors<br>3. Pattern started at 10:29 — coincides with a recent deployment<br><br>Would you like me to help investigate this? I can suggest diagnostic commands for you to run.`,
-        trail: { text: 'CloudWatch alarm data reviewed — 47 pod restarts, ImagePullBackOff', actor: 'AI Agent' }
+        text: `Hi — your CloudWatch alarm <code>EKS-PodRestart-Critical</code> triggered 12 minutes ago.<br><br><strong>What I can see (alarm metadata only):</strong><br>1. Alarm state: <span class="highlight">ALARM</span><br>2. Metric: Pod restart count exceeded threshold (>10 in 5 min)<br>3. Cluster: <code>prod-east-1</code><br>4. Time triggered: 10:29 UTC<br><br>To help investigate further, I'd need your permission to view pod logs and cluster details. Would you like to share access?`,
+        trail: { text: 'Session started — alarm metadata reviewed (no customer data accessed yet)', actor: 'AI Agent' }
     },
-    // Step 1: Quick response options
+    // Step 1: Quick response options — consent gate
     {
         delay: 500,
         action: 'quick_options',
         options: [
-            { text: "Yes, help me investigate", id: 'confirm' },
-            { text: "Tell me more about the errors", id: 'more' },
-            { text: "It's something else", id: 'other' }
+            { text: "Yes, share my logs and cluster data", id: 'consent_full' },
+            { text: "Share redacted logs only", id: 'consent_redacted' },
+            { text: "I'll share specific things manually", id: 'consent_manual' }
         ]
     },
-    // Step 2: Customer confirms (triggered by quick response)
+    // Step 2: Customer grants access
     {
         delay: 0,
         action: 'await_customer',
-        trigger: 'confirm',
-        customerText: "Yes, that's my issue. My production app is down.",
-        trail: { text: 'Customer confirmed: production app affected', actor: 'Customer', actorClass: 'customer' }
+        trigger: 'consent_full',
+        customerText: "Yes, you can access my logs and cluster details.",
+        trail: { text: 'Customer granted access: pod logs + cluster configuration', actor: 'Customer', actorClass: 'customer' }
     },
-    // Step 3: AI investigates
+    // Step 3: AI acknowledges consent and begins
     {
         delay: 1500,
         action: 'ai_typing'
@@ -214,8 +294,8 @@ const scenario = [
     {
         delay: 2500,
         action: 'ai_message',
-        text: `Based on the alarm data and error pattern, I'd like to check three things:<br><br>1. 🔍 ECR repository permissions<br>2. 🔍 Image tag existence in the registry<br>3. 🔍 Node IAM role configuration<br><br>I'll suggest commands in the Terminal tab for you to run. The results will appear in the Context Panel as you execute them.`,
-        trail: { text: 'AI recommending checks: ECR permissions, image tag, IAM role', actor: 'AI Agent' }
+        text: `Thank you. I now have read access to your pod logs and cluster configuration for this session.<br><br><strong>Access granted:</strong><br>• ✅ CloudWatch Logs (EKS pod logs)<br>• ✅ EKS cluster status (node/pod health)<br>• ✅ IAM role configuration (read-only)<br><br><em>Note: This access is scoped to this session only and will expire when the session ends. I cannot modify anything in your environment.</em><br><br>Based on the logs, I'd like to check three things:<br>1. 🔍 ECR repository permissions<br>2. 🔍 Image tag existence in the registry<br>3. 🔍 Node IAM role configuration<br><br>I'll suggest commands in the Terminal tab for you to run. The results will appear in the Context Panel.`,
+        trail: { text: 'Access confirmed — AI reviewing pod logs and cluster config (read-only, session-scoped)', actor: 'AI Agent' }
     },
     // Step 4: First finding
     {
@@ -228,42 +308,46 @@ const scenario = [
         text: `<span class="highlight">Root cause identified.</span><br><br><strong>Problem:</strong> Based on the error logs, your node IAM role (<code>eks-node-role-prod</code>) appears to be missing ECR pull permissions.<br><br><strong>Evidence from logs:</strong><br>1. <code>403 Forbidden</code> responses when pulling from ECR<br>2. <code>ecr:GetDownloadUrlForLayer</code> — permission denied<br>3. <code>ecr:BatchGetImage</code> — permission denied<br><br><strong>Impact:</strong> Nodes cannot authenticate to pull the container image → every pod restart fails with ImagePullBackOff.<br><br>I have a suggested fix ready. Would you like to see it?`,
         trail: { text: 'ROOT CAUSE: Node IAM role missing ECR pull permissions', actor: 'AI Agent' }
     },
-    // Step 5: Quick response for fix
+    // Step 5: AI found root cause — needs engineer validation before suggesting fix
+    {
+        delay: 4000,
+        action: 'ai_message',
+        text: `I've identified a likely root cause. Before I suggest any fix commands, all proposed actions must be validated by a human specialist.<br><br><strong>Your support plan:</strong> ${currentTier.label}<br><strong>Severity:</strong> High (production system impaired)<br><strong>Estimated engineer response:</strong> ${currentTier.engineerResponseTime}<br><br>Connecting you with an available specialist now...`,
+        trail: { text: `AI requesting engineer validation — ${currentTier.label}, estimated ${currentTier.engineerResponseTime} response`, actor: 'AI Agent' }
+    },
+    // Step 6: (handover package generated internally — not shown to customer unless requested)
+    {
+        delay: 6000,
+        action: 'engineer_connecting'
+    },
+    // Step 7: Engineer joins — realistic wait based on tier
+    {
+        delay: 8000,
+        action: 'engineer_joined',
+        trail: { text: 'Sarah K. joined — reviewing AI findings', actor: 'Sarah K.', actorClass: 'engineer' }
+    },
+    // Step 9: Engineer greets, empathizes, validates AI finding
+    {
+        delay: 4000,
+        action: 'engineer_message',
+        text: `Hi there! I'm Sarah, a networking specialist. I know production downtime is stressful — let's get this sorted quickly.<br><br>I've reviewed the AI's analysis and I can confirm the finding is correct:<br><br><strong>✅ Validated:</strong> Your node IAM role (<code>eks-node-role-prod</code>) is missing ECR pull permissions. The <code>403 Forbidden</code> errors in your logs confirm this.<br><br>Let me prepare a fix command for you.<br><br><em><small>Note: I was provided a context summary of this session when I joined — <a href="#" onclick="document.getElementById('handover-modal').classList.remove('hidden'); return false;">view what was shared</a></small></em>`
+    },
+    // Step 10: Engineer provides validated fix command
+    {
+        delay: 8000,
+        action: 'engineer_message',
+        text: `Here's the fix I recommend:<br><br><strong>Command:</strong><br><code>aws iam attach-role-policy --role-name eks-node-role-prod --policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly</code><br><br><strong>What it does:</strong><br>1. Attaches the AWS-managed <code>AmazonEC2ContainerRegistryReadOnly</code> policy<br>2. Grants read-only ECR pull permissions to your node role<br>3. No write or delete access — safe for production<br><br>Copy this command and run it in your terminal. Let me know once you've applied it and I'll tell you how to verify.`,
+        trail: { text: 'Engineer validated and approved fix: attach ECR policy', actor: 'Sarah K.', actorClass: 'engineer' }
+    },
+    // Step 10b: Load command into terminal
     {
         delay: 500,
-        action: 'quick_options',
-        options: [
-            { text: "Show me the fix", id: 'show' },
-            { text: "I'll investigate manually", id: 'manual' }
-        ]
-    },
-    // Step 6: Customer asks to see fix
-    {
-        delay: 0,
-        action: 'await_customer',
-        trigger: 'show',
-        customerText: "Show me what needs to change.",
-        trail: { text: 'Customer requested: show proposed fix', actor: 'Customer', actorClass: 'customer' }
-    },
-    // Step 7: AI suggests the command (doesn't run it)
-    {
-        delay: 1500,
-        action: 'ai_typing'
-    },
-    {
-        delay: 1000,
         action: 'suggest_command',
         command: 'aws iam attach-role-policy --role-name eks-node-role-prod --policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly',
-        source: 'AI Agent',
+        source: 'Sarah K. (validated)',
         description: 'Attach ECR read-only policy to node role'
     },
-    {
-        delay: 500,
-        action: 'ai_message',
-        text: `Here's my recommended fix. I've loaded the command into your <strong>Sandbox Terminal</strong> (Terminal tab in Context Panel):<br><br><strong>Command:</strong><br><code>aws iam attach-role-policy --role-name eks-node-role-prod --policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly</code><br><br><strong>What it does:</strong><br>1. Attaches the AWS-managed <code>AmazonEC2ContainerRegistryReadOnly</code> policy<br>2. Grants read-only ECR pull permissions to your node role<br>3. No write or delete access — safe for production<br><br><strong>Next step:</strong> Review and run the command in the Terminal when ready. I'll monitor for pod recovery.`,
-        trail: { text: 'AI suggested fix: attach ECR policy to node role (awaiting customer execution)', actor: 'AI Agent' }
-    },
-    // Step 8: Wait for customer to run the command
+    // Step 11: Quick responses
     {
         delay: 500,
         action: 'quick_options',
@@ -272,7 +356,7 @@ const scenario = [
             { text: "What does this policy include?", id: 'show_policy' }
         ]
     },
-    // Step 9: Customer confirms they ran it
+    // Step 12: Customer confirms they ran it
     {
         delay: 0,
         action: 'await_customer',
@@ -280,84 +364,60 @@ const scenario = [
         customerText: "Done, I've run the command.",
         trail: { text: 'Customer executed: IAM policy attachment', actor: 'Customer', actorClass: 'customer' }
     },
-    // Step 10: AI confirms and surfaces secondary issue
+    // Step 13: Update context + engineer monitors
     {
-        delay: 1500,
-        action: 'ai_typing'
-    },
-    {
-        delay: 1000,
+        delay: 2000,
         action: 'update_context',
         contextFn: 'showECRFixApplied'
     },
     {
-        delay: 2500,
-        action: 'ai_message',
-        text: `Policy confirmed attached. ✅ Monitoring pod recovery...<br><br><strong>Status update:</strong><br>1. ✅ ECR permissions — fixed<br>2. ⏳ Pods retrying image pull — in progress<br><br><em>However</em> — I've identified a potential secondary issue:<br><br><strong>Concern:</strong> A NetworkPolicy egress rule may also be blocking image pulls from the ECR endpoint.<br><strong>Confidence:</strong> <span class="highlight">45%</span> — not high enough for me to recommend a fix alone.<br><br>I'd like to bring in a networking specialist to verify. Would you like me to connect you with someone?`,
-        trail: { text: 'ECR permissions confirmed ✅ — Secondary issue: NetworkPolicy (45% confidence)', actor: 'AI Agent' }
+        delay: 4000,
+        action: 'engineer_message',
+        text: `Great. Now let's verify it worked. Could you run this and tell me what you see?<br><br><code>kubectl get pods -n default</code><br><br>I want to check if pods are recovering.`,
+        trail: { text: 'Engineer requested verification from customer', actor: 'Sarah K.', actorClass: 'engineer' }
     },
-    // Step 8: Consent for escalation
+    // Step 14: Customer reports result
     {
-        delay: 500,
+        delay: 1000,
         action: 'quick_options',
         options: [
-            { text: "Yes, bring someone in", id: 'escalate' },
-            { text: "Let's wait and see if the fix works first", id: 'wait' }
+            { text: "2 Running, 1 still ImagePullBackOff", id: 'partial_result' },
+            { text: "All 3 still failing", id: 'all_failing' }
         ]
     },
-    // Step 9: Customer consents to escalation
     {
         delay: 0,
         action: 'await_customer',
-        trigger: 'escalate',
-        customerText: "Yes, bring them in. I want to make sure this is fully resolved.",
-        trail: { text: 'Customer consented to specialist escalation', actor: 'Customer', actorClass: 'customer' }
+        trigger: 'partial_result',
+        customerText: "2 pods are now Running but api-server-a3c21 is still stuck in ImagePullBackOff — getting a timeout error.",
+        trail: { text: 'Customer reported: 2/3 recovered, 1 still failing with timeout', actor: 'Customer', actorClass: 'customer' }
     },
-    // Step 10: AI initiates handover
-    {
-        delay: 1000,
-        action: 'ai_message',
-        text: `Connecting you with <strong>Sarah K.</strong>, a Networking & VPC Specialist. She'll have the full context of everything we've done together — no need to re-explain anything.\n\nShe's reviewing the investigation now...`,
-        trail: { text: 'Escalation triggered — connecting Sarah K. (Networking Specialist)', actor: 'AI Agent' }
-    },
-    // Step 11: Show handover package (brief flash)
-    {
-        delay: 1500,
-        action: 'show_handover'
-    },
-    // Step 12: Engineer connecting state
+    // Update context based on customer's report
     {
         delay: 2000,
-        action: 'engineer_connecting'
+        action: 'update_context',
+        contextFn: 'showPartialRecovery'
     },
-    // Step 13: Engineer joins
     {
         delay: 4000,
-        action: 'engineer_joined',
-        trail: { text: 'Sarah K. joined the workspace — full context loaded', actor: 'Sarah K.', actorClass: 'engineer' }
-    },
-    // Step 14: Engineer first message
-    {
-        delay: 2000,
         action: 'engineer_message',
-        text: `Hi there! I'm Sarah, a networking specialist. I can see this has been a stressful one — production app down is never fun. Let's get you fully sorted.<br><br>I've reviewed everything the AI investigated so far. The ECR permission fix looks good. Let me now focus on the NetworkPolicy angle — I'll have an answer for you shortly.`
+        text: `That confirms what I suspected. The IAM fix resolved 2 of 3 pods, but the timeout on the third tells me it's a network-level block — not permissions.<br><br><strong>My diagnosis:</strong> Your NetworkPolicy is likely restricting outbound traffic and doesn't include the ECR VPC endpoint CIDR. Even with correct IAM, the pod's network can't reach ECR.<br><br>I have a fix. Here it is:`,
+        trail: { text: 'Engineer diagnosed: NetworkPolicy blocking ECR endpoint', actor: 'Sarah K.', actorClass: 'engineer' }
     },
-    // Step 15: Engineer finding
+    // Step 15: Engineer provides second validated fix
     {
-        delay: 3500,
+        delay: 6000,
         action: 'engineer_message',
-        text: `<strong>Finding confirmed:</strong><br><br>Your NetworkPolicy <code>api-egress</code> restricts outbound traffic to a specific set of CIDR blocks, but it <strong>does not include</strong> the ECR VPC endpoint range (<code>10.0.1.0/24</code>).<br><br><strong>What this means:</strong><br>Even though IAM permissions are now correct, the pod's network traffic is being dropped before it reaches ECR.<br><br><strong>Suggested fix:</strong><br>I've loaded a <code>kubectl patch</code> command into your Terminal that adds the ECR endpoint CIDR to your egress allowlist.<br><br><strong>Steps:</strong><br>1. Switch to the Terminal tab<br>2. Review the command (click it from Suggested Commands to load)<br>3. Run it when you're satisfied<br><br>This only opens port 443 to that specific CIDR — no broad egress changes. Let me know when you've run it.`,
-        trail: { text: 'Sarah confirmed: NetworkPolicy blocking ECR VPC endpoint egress', actor: 'Sarah K.', actorClass: 'engineer' }
+        text: `<strong>Command:</strong><br><code>kubectl patch networkpolicy api-egress -n default --type=json -p '[{"op":"add","path":"/spec/egress/-","value":{"to":[{"ipBlock":{"cidr":"10.0.1.0/24"}}],"ports":[{"port":443,"protocol":"TCP"}]}}]'</code><br><br><strong>What it does:</strong><br>1. Adds an egress rule to your NetworkPolicy<br>2. Allows outbound TCP/443 to <code>10.0.1.0/24</code> (ECR VPC endpoint)<br>3. Only opens that specific CIDR — no broad egress changes<br><br>Copy and paste this into your terminal. Let me know once applied.`
     },
-    // Step 15b: Engineer suggests command
     {
-        delay: 1000,
+        delay: 500,
         action: 'suggest_command',
-        command: 'kubectl patch networkpolicy api-egress -n default --type=json -p \'[{"op":"add","path":"/spec/egress/-","value":{"to":[{"ipBlock":{"cidr":"10.0.1.0/24"}}],"ports":[{"port":443,"protocol":"TCP"}]}}]\'',
-        source: 'Sarah K.',
+        command: "kubectl patch networkpolicy api-egress -n default --type=json -p '[{\"op\":\"add\",\"path\":\"/spec/egress/-\",\"value\":{\"to\":[{\"ipBlock\":{\"cidr\":\"10.0.1.0/24\"}}],\"ports\":[{\"port\":443,\"protocol\":\"TCP\"}]}}]'",
+        source: 'Sarah K. (validated)',
         description: 'Add ECR VPC endpoint CIDR to NetworkPolicy egress rules'
     },
-    // Step 16: Final quick options
+    // Step 16: Quick options
     {
         delay: 500,
         action: 'quick_options',
@@ -366,30 +426,26 @@ const scenario = [
             { text: "Explain this command first", id: 'explain_cmd' }
         ]
     },
-    // Step 17: Resolution
+    // Step 17: Customer confirms
     {
         delay: 0,
         action: 'await_customer',
         trigger: 'final_fix',
         customerText: "Applied. Let me know if it looks good."
     },
+    // Step 18: Engineer confirms resolution + summary + docs
     {
-        delay: 2000,
+        delay: 5000,
         action: 'engineer_message',
-        text: `I can see the egress rule is now in place. ✅ Pods are recovering — let me monitor for a moment to confirm full stability.`
-    },
-    {
-        delay: 3000,
-        action: 'engineer_message',
-        text: `All clear. ✅ All 3 pods are running healthy and pulling images without issues.<br><br><strong>📋 Session Summary:</strong><br><br><strong>What was wrong:</strong><br>1. <strong>Primary issue:</strong> The node IAM role (<code>eks-node-role-prod</code>) was missing ECR pull permissions — pods couldn't authenticate to download container images.<br>2. <strong>Secondary issue:</strong> A NetworkPolicy egress rule was blocking outbound traffic on port 443 to the ECR VPC endpoint CIDR — even with correct permissions, the network layer was dropping the connection.<br><br><strong>What was fixed:</strong><br>1. Attached <code>AmazonEC2ContainerRegistryReadOnly</code> policy to the node role<br>2. Patched NetworkPolicy <code>api-egress</code> to allow TCP/443 to <code>10.0.1.0/24</code><br><br><strong>📖 Helpful AWS documentation:</strong><br>• <a href="#">Amazon ECR: Private registry authentication</a><br>• <a href="#">Amazon EKS: Cluster IAM role permissions</a><br>• <a href="#">Kubernetes NetworkPolicy: Egress rules best practices</a><br><br><strong>💡 Recommendation:</strong> Consider adding ECR VPC endpoint CIDRs to your NetworkPolicy templates to prevent this from recurring on future deployments.<br><br>It was great working with you — don't hesitate to reach out if anything else comes up! 👋`
+        text: `All clear. ✅ All 3 pods are running healthy and pulling images without issues.<br><br><strong>📋 Session Summary:</strong><br><br><strong>What was wrong:</strong><br>1. <strong>Primary:</strong> Node IAM role (<code>eks-node-role-prod</code>) was missing ECR pull permissions<br>2. <strong>Secondary:</strong> NetworkPolicy egress rule was blocking outbound traffic to ECR VPC endpoint<br><br><strong>What was fixed:</strong><br>1. Attached <code>AmazonEC2ContainerRegistryReadOnly</code> policy to the node role<br>2. Patched NetworkPolicy <code>api-egress</code> to allow TCP/443 to <code>10.0.1.0/24</code><br><br><strong>📖 AWS Documentation:</strong><br>• <a href="#">Amazon ECR: Private registry authentication</a><br>• <a href="#">Amazon EKS: Cluster IAM role permissions</a><br>• <a href="#">Kubernetes NetworkPolicy: Egress best practices</a><br><br><strong>💡 Recommendation:</strong> Add ECR VPC endpoint CIDRs to your NetworkPolicy templates to prevent this on future deployments.<br><br>Great working with you — reach out anytime if anything else comes up! 👋`
     },
     {
         delay: 2500,
         action: 'ai_message',
-        text: `All pods confirmed healthy. ✅ Your application is back online. 🎉<br><br><strong>Resolution summary:</strong><br>1. ✅ Fixed IAM ECR permissions — attached <code>AmazonEC2ContainerRegistryReadOnly</code> to node role<br>2. ✅ Fixed NetworkPolicy egress — added ECR VPC endpoint CIDR to allowlist<br><br><strong>Root causes:</strong><br>• Primary: Node role lacked ECR pull permissions after recent role update<br>• Secondary: NetworkPolicy blocked outbound traffic to ECR VPC endpoint<br><br>Is there anything else I can help with?`,
-        trail: { text: 'RESOLVED — All pods healthy. Application online.', actor: 'AI Agent' }
+        text: `All pods confirmed healthy. ✅ Application is back online. 🎉<br><br><strong>Session access revoked:</strong> My read access to your logs and cluster data has now expired.<br><br>Is there anything else I can help with?`,
+        trail: { text: 'RESOLVED — All pods healthy. Session access revoked.', actor: 'AI Agent' }
     },
-    // Step 18: Update cluster view
+    // Step 19: Fix cluster view
     {
         delay: 1000,
         action: 'fix_cluster'
@@ -424,8 +480,14 @@ function executeStep(step) {
     switch (step.action) {
         case 'ai_message':
             removeTypingIndicator();
-            addMessage('ai', 'AI Agent', step.text);
-            if (step.trail) addTrailEntry(step.trail);
+            // Show typing proportional to message length, then reveal
+            showTypingIndicator();
+            const aiDelay = getTypingDelay(step.text, 'ai');
+            setTimeout(() => {
+                removeTypingIndicator();
+                addMessage('ai', 'AI Agent', step.text);
+                if (step.trail) addTrailEntry(step.trail);
+            }, aiDelay);
             break;
 
         case 'ai_typing':
@@ -464,8 +526,14 @@ function executeStep(step) {
             break;
 
         case 'engineer_message':
-            addEngineerMessage(step.text);
-            if (step.trail) addTrailEntry(step.trail);
+            // Show engineer typing, then reveal message after proportional delay
+            showEngineerTypingIndicator();
+            const engDelay = getTypingDelay(step.text, 'engineer');
+            setTimeout(() => {
+                removeEngineerTypingIndicator();
+                addEngineerMessage(step.text);
+                if (step.trail) addTrailEntry(step.trail);
+            }, engDelay);
             break;
 
         case 'fix_cluster':
@@ -484,6 +552,17 @@ function executeStep(step) {
 }
 
 // ===== MESSAGE HELPERS =====
+
+// Calculate realistic delay based on text length (simulates reading/typing time)
+// ~40ms per character for AI (fast typer), ~60ms per character for engineer (human speed)
+function getTypingDelay(text, type) {
+    const plainText = text.replace(/<[^>]*>/g, ''); // strip HTML tags
+    const charCount = plainText.length;
+    const msPerChar = type === 'engineer' ? 25 : 15;
+    const baseDelay = type === 'engineer' ? 2000 : 1500;
+    return Math.min(baseDelay + (charCount * msPerChar), 8000); // cap at 8 seconds
+}
+
 function addMessage(type, sender, html) {
     const msg = document.createElement('div');
     msg.className = 'message';
@@ -498,7 +577,20 @@ function addMessage(type, sender, html) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
+function addMessageWithTyping(type, sender, html, callback) {
+    // Show typing indicator first
+    showTypingIndicator();
+    const delay = getTypingDelay(html, type);
+    setTimeout(() => {
+        removeTypingIndicator();
+        addMessage(type, sender, html);
+        if (callback) callback();
+    }, delay);
+}
+
 function showTypingIndicator() {
+    // Remove any existing one first
+    removeTypingIndicator();
     const typing = document.createElement('div');
     typing.className = 'message typing-msg';
     typing.innerHTML = `
@@ -509,6 +601,27 @@ function showTypingIndicator() {
     `;
     chatMessages.appendChild(typing);
     chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function showEngineerTypingIndicator() {
+    removeEngineerTypingIndicator();
+    const chat = document.getElementById('engineer-chat');
+    const typing = document.createElement('div');
+    typing.className = 'message engineer-typing-msg';
+    typing.innerHTML = `
+        <div class="message-avatar" style="background: var(--accent-green); color: #fff; width:24px; height:24px; font-size:0.6rem;">SK</div>
+        <div class="message-body">
+            <div class="typing-indicator"><span></span><span></span><span></span></div>
+        </div>
+    `;
+    chat.appendChild(typing);
+    chat.scrollTop = chat.scrollHeight;
+}
+
+function removeEngineerTypingIndicator() {
+    const chat = document.getElementById('engineer-chat');
+    const typing = chat.querySelector('.engineer-typing-msg');
+    if (typing) typing.remove();
 }
 
 function removeTypingIndicator() {
@@ -533,13 +646,65 @@ function handleQuickResponse(id, text) {
     addMessage('customer', 'You', text);
 
     // Handle branching for specific options
+    if (id === 'consent_full') {
+        // Advance the scenario — full access granted
+        const awaitStep = scenario[currentScenarioIndex];
+        if (awaitStep && awaitStep.action === 'await_customer') {
+            if (awaitStep.trail) addTrailEntry(awaitStep.trail);
+            currentScenarioIndex++;
+            processNextStep();
+        }
+        return;
+    }
+
+    if (id === 'consent_redacted') {
+        addTrailEntry({ text: 'Customer granted access: redacted logs only', actor: 'Customer', actorClass: 'customer' });
+        setTimeout(() => {
+            addMessage('ai', 'AI Agent', `Understood — I'll work with redacted logs. Sensitive data like IP addresses, account IDs, and resource names will be masked.<br><br><strong>Access granted (redacted):</strong><br>• ✅ CloudWatch Logs (redacted — IPs, ARNs masked)<br>• ✅ EKS cluster status (pod state only, no config details)<br><br><em>If I need unredacted data to pinpoint the issue, I'll ask for your permission.</em><br><br>Based on the redacted error patterns, I can see:<br>1. <span class="highlight">47 pod restarts</span> — all with <code>ImagePullBackOff</code><br>2. The errors indicate a <code>403 Forbidden</code> when pulling from ECR<br>3. This points to either an IAM permission or network connectivity issue<br><br>I'll suggest diagnostic commands for your Terminal. Would you like to proceed?`);
+            showQuickOptions([
+                { text: "Yes, let's investigate", id: 'confirm' },
+                { text: "Grant full access instead", id: 'consent_full' }
+            ]);
+            // Set index to after the consent await step
+            currentScenarioIndex = scenario.findIndex(s => s.action === 'await_customer' && s.trigger === 'consent_full') + 1;
+        }, 1500);
+        return;
+    }
+
+    if (id === 'consent_manual') {
+        addTrailEntry({ text: 'Customer chose: share data manually', actor: 'Customer', actorClass: 'customer' });
+        setTimeout(() => {
+            addMessage('ai', 'AI Agent', `No problem — you stay in full control. I won't access any data unless you paste it here or run commands in the Terminal.<br><br><strong>How this works:</strong><br>1. I'll suggest what to check and which commands to run<br>2. You run them in the Terminal and I can see the output<br>3. You can also paste log snippets directly in this chat<br><br>To start: could you run <code>kubectl get pods -n default</code> in the Terminal and share the output? That'll tell us which pods are affected.`);
+            addSuggestedCommand('kubectl get pods -n default', 'AI Agent', 'List all pods and their current status');
+            showQuickOptions([
+                { text: "Done — I've run it", id: 'confirm' }
+            ]);
+            currentScenarioIndex = scenario.findIndex(s => s.action === 'await_customer' && s.trigger === 'consent_full') + 1;
+        }, 1500);
+        return;
+    }
+
+    if (id === 'confirm') {
+        // Generic confirm — advance scenario
+        const awaitStep = scenario[currentScenarioIndex];
+        if (awaitStep && awaitStep.action === 'await_customer') {
+            if (awaitStep.trail) addTrailEntry(awaitStep.trail);
+            currentScenarioIndex++;
+            processNextStep();
+        } else {
+            // If not at an await step, just move forward
+            processNextStep();
+        }
+        return;
+    }
+
     if (id === 'show') {
         // Customer wants to see what will change before approving
         addTrailEntry({ text: 'Customer requested: show proposed changes', actor: 'Customer', actorClass: 'customer' });
         // Advance the scenario past the await_customer step
-        const awaitStep = scenario[currentScenarioIndex];
-        if (awaitStep && awaitStep.action === 'await_customer') {
-            if (awaitStep.trail) addTrailEntry(awaitStep.trail);
+        const showAwaitStep = scenario[currentScenarioIndex];
+        if (showAwaitStep && showAwaitStep.action === 'await_customer') {
+            if (showAwaitStep.trail) addTrailEntry(showAwaitStep.trail);
             currentScenarioIndex++;
             processNextStep();
         }
@@ -624,7 +789,7 @@ function handleQuickResponse(id, text) {
         return;
     }
 
-    if (id === 'ran_command') {
+    if (id === 'ran_command' || id === 'partial_result' || id === 'all_failing') {
         // Advance to the next step (same as confirming fix)
         const awaitStep = scenario[currentScenarioIndex];
         if (awaitStep && awaitStep.action === 'await_customer') {
@@ -729,42 +894,19 @@ function showPartialRecovery() {
 function switchToPartialRecoveryLogs() {
     stopLogStreaming();
 
-    const now = new Date();
-    const time = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+    // Replace logs with static redacted partial recovery view
+    logStream.innerHTML = '<div class="log-entry system" style="color:var(--accent-orange); margin-bottom:8px; font-style:italic;">⚠️ Logs displayed with redacted identifiers (IPs, ARNs, account IDs masked)</div>';
 
-    // Add recovery + remaining failure logs
     const recoveryLogs = [
-        { time, level: 'info', pod: 'api-server-7d4f8', msg: 'Successfully pulled image — container starting' },
-        { time, level: 'info', pod: 'worker-bf892', msg: 'Successfully pulled image — container starting' },
-        { time, level: 'error', pod: 'api-server-a3c21', msg: 'ImagePullBackOff: dial tcp 10.0.1.45:443 — connection timed out (NetworkPolicy?)' },
+        { time: '10:45:01', level: 'info', pod: 'api-server-*****', msg: 'Successfully pulled image — container starting' },
+        { time: '10:45:02', level: 'info', pod: 'worker-*****', msg: 'Successfully pulled image — container starting' },
+        { time: '10:45:05', level: 'error', pod: 'api-server-*****', msg: 'ImagePullBackOff: dial tcp ***.***.***.***:443 — connection timed out' },
+        { time: '10:45:08', level: 'warn', pod: 'api-server-*****', msg: 'NetworkPolicy egress: packet dropped to ***.***.***.***:443 (ECR endpoint)' },
+        { time: '10:45:12', level: 'error', pod: 'api-server-*****', msg: 'Back-off restarting failed container — network egress blocked' },
+        { time: '10:45:15', level: 'info', pod: 'endpoint-ctrl', msg: 'Endpoints api-service updated: 2 ready, 1 not ready' },
     ];
-    recoveryLogs.forEach(l => {
-        const entry = document.createElement('div');
-        entry.className = 'log-entry';
-        entry.innerHTML = formatLog(l);
-        logStream.appendChild(entry);
-    });
-    logStream.scrollTop = logStream.scrollHeight;
 
-    // Start streaming only the failing pod logs
-    logStreamInterval = setInterval(() => {
-        const now2 = new Date();
-        const t = `${String(now2.getHours()).padStart(2,'0')}:${String(now2.getMinutes()).padStart(2,'0')}:${String(now2.getSeconds()).padStart(2,'0')}`;
-        const failingLogs = [
-            { time: t, level: 'error', pod: 'api-server-a3c21', msg: 'ImagePullBackOff: dial tcp 10.0.1.45:443 — i/o timeout' },
-            { time: t, level: 'warn', pod: 'api-server-a3c21', msg: 'NetworkPolicy egress: packet dropped to 10.0.1.45:443 (ECR endpoint)' },
-            { time: t, level: 'error', pod: 'api-server-a3c21', msg: 'Back-off restarting failed container — network egress blocked' },
-        ];
-        const log = failingLogs[Math.floor(Math.random() * failingLogs.length)];
-        const entry = document.createElement('div');
-        entry.className = 'log-entry';
-        entry.innerHTML = formatLog(log);
-        logStream.appendChild(entry);
-        logStream.scrollTop = logStream.scrollHeight;
-        while (logStream.children.length > 30) {
-            logStream.removeChild(logStream.firstChild);
-        }
-    }, 3000);
+    logStream.innerHTML += recoveryLogs.map(l => `<div class="log-entry">${formatLog(l)}</div>`).join('');
 }
 
 // Update cluster after AI applies the ECR fix (before escalation question)
@@ -915,14 +1057,20 @@ function addSuggestedCommand(command, source, description) {
     });
     suggestedCommandsEl.appendChild(cmdEl);
 
-    // Flash the terminal tab to draw attention
+    // Keep terminal tab lit until customer clicks it
     const termTab = document.querySelector('[data-tab="terminal"]');
+    termTab.classList.add('tab-alert');
     termTab.style.background = 'var(--accent-orange)';
     termTab.style.color = '#000';
-    setTimeout(() => {
+
+    // Only stop flashing when customer clicks the terminal tab
+    const clearAlert = () => {
+        termTab.classList.remove('tab-alert');
         termTab.style.background = '';
         termTab.style.color = '';
-    }, 2000);
+        termTab.removeEventListener('click', clearAlert);
+    };
+    termTab.addEventListener('click', clearAlert);
 }
 
 // Simulated terminal command execution
