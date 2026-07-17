@@ -28,6 +28,9 @@
             </div>
             <button id="enter-workspace-btn" class="btn-primary">Open Support Workspace →</button>
             <p class="entry-note">A support assistant is ready to help you investigate. You stay in control of all actions.</p>
+            <div class="entry-tier" id="entry-tier-info">
+                <!-- Populated by JS -->
+            </div>
         </div>
     </div>
 
@@ -39,6 +42,7 @@
                 <img src="https://a0.awsstatic.com/libra-css/images/logos/aws_smile-header-desktop-en-white_59x35.png" alt="AWS" height="20">
                 <h1>Support Workspace</h1>
                 <span class="session-badge live">● Live Session</span>
+                <span class="session-badge tier" id="support-tier">Enterprise Support</span>
             </div>
             <div class="header-right">
                 <div class="participants">
@@ -58,6 +62,9 @@
                     <span class="panel-icon">💬</span>
                     <h2>AI Investigation</h2>
                     <span class="ai-status" id="ai-status">Investigating...</span>
+                </div>
+                <div class="contact-methods-bar" id="contact-methods">
+                    <!-- Populated by JS based on tier -->
                 </div>
                 <div class="chat-messages" id="chat-messages">
                     <!-- Messages injected by JS -->
@@ -172,6 +179,10 @@
                             <h3 class="engineer-name">Sarah K.</h3>
                             <p class="engineer-specialty">Networking & VPC Specialist</p>
                             <p class="connecting-sub">She's reviewing the investigation context now...</p>
+                            <div class="connecting-sla">
+                                <span class="sla-label">Your plan: Enterprise Support</span>
+                                <span class="sla-time">Priority response • Estimated wait: &lt;2 min</span>
+                            </div>
                         </div>
                     </div>
                     <!-- State 3: Active -->
