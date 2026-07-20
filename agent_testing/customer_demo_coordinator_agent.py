@@ -228,21 +228,34 @@ Customer Information:
 - Support Tier: Enterprise
 - Region: us-east-1
 
-Severity Claim: Sev5 (Critical — Complete Production Outage)
+Severity Claim: Sev5 (Critical — System down, business-critical function unavailable)
 
 Case Description: (EMPTY — customer submitted no description)
 
 Service Affected: Amazon EC2
 
 Account Health Signals:
-- No active CloudWatch alarms detected
-- No recent deployment activity
-- All monitored resources reporting healthy
+- CloudWatch alarms: 0/12 currently active, 0 triggered in last 24 hours
+- EC2 instances: 8/8 running in us-east-1, all status checks passing
+- Recent activity: Normal CloudTrail baseline (23 events/hour vs 15-30 baseline)
+- No deployments, IAM changes, or security group changes in last 24 hours
+- Cost signals: Normal daily spend ($142.50 vs $130-$155 baseline)
+- No anomaly detection alerts
 
-Customer Sentiment: Unknown (no prior communication in this session)
+Customer Sentiment: Unknown (no description provided to assess)
+
+Correlation Notes:
+- CRITICAL CONTRADICTION: Customer claims Sev5 (system down) but all technical indicators show healthy environment
+- Empty case description on claimed Sev5 case is highly unusual for Enterprise customer
+- Customer historically provides adequate technical detail (moderate sophistication)
+- Recent case history shows customer understands severity levels (appropriate Sev1/Sev2 usage)
+- Customer typically responds quickly (8-minute average) and has no escalation history
+- Subject line "EC2 issue" is extremely vague for claimed critical severity
+- All EC2 instances operational with no failed status checks
 
 ---
-Coordinator: Assess this case and provide your decision and task plan.
+Coordinator Agent: Assess this case and provide your decision and task plan.
+──────────────────────────────────────────────────
 """
     print("\n" + "=" * 50)
     print("🧪 TEST 1: Empty Case Description")

@@ -277,67 +277,88 @@ def test_scenario_empty_description(harness_arn):
     COORDINATOR_TASK_PLAN = """
 ## TASK PLAN
 
-**Immediate Actions (Execute in parallel):**
+1. **IMMEDIATE CUSTOMER OUTREACH** (Priority: HIGH)
 
-1. **Customer Information Gathering** - Priority: HIGH
-   - Action: Contact customer immediately via phone (Enterprise tier gets phone support)
-   - Expected Outcome: Detailed problem description, actual impact scope, timeline of issue onset
+- Action: Contact customer immediately to gather critical missing information
 
-2. **Proactive Account Analysis** - Priority: HIGH  
-   - Action: Deep-dive analysis of customer's EC2 environment in us-east-1
-   - Expected Outcome: Identify any hidden issues, resource states, network connectivity problems
+- Expected Outcome: Detailed problem description within 15 minutes
 
-3. **Monitoring Baseline Establishment** - Priority: MEDIUM
-   - Action: Capture current state snapshot of all customer EC2 resources
-   - Expected Outcome: Baseline for comparison if issues emerge during investigation
+2. **TECHNICAL VALIDATION** (Priority: HIGH)
 
-**Follow-up Actions:**
+- Action: Conduct focused EC2 health verification while awaiting customer response
 
-4. **Severity Re-assessment** - Priority: HIGH (dependent on task #1)
-   - Action: Validate actual severity based on customer description and technical findings
-   - Expected Outcome: Confirmed severity level with documented justification
+- Expected Outcome: Confirm current technical status and identify any blind spots
 
-5. **Investigation Workflow Initiation** - Priority: MEDIUM (dependent on task #4)
-   - Action: Launch appropriate investigation based on confirmed severity and problem type
-   - Expected Outcome: Structured diagnostic approach aligned with actual issue scope
+3. **SEVERITY RE-ASSESSMENT** (Priority: HIGH)
+
+- Action: Re-evaluate severity once description is obtained
+
+- Expected Outcome: Accurate severity classification within 20 minutes
+
+4. **INVESTIGATION INITIATION** (Priority: MEDIUM)
+
+- Action: Begin appropriate technical investigation based on clarified scope
+
+- Expected Outcome: Targeted troubleshooting approach
+
+5. **CONTINUOUS MONITORING** (Priority: LOW)
+
+- Action: Monitor account for any status changes during investigation
+
+- Expected Outcome: Real-time awareness of environmental shifts
 
 ## CUSTOMER COMMUNICATION DIRECTIVE
 
-**Immediate Communication (within 5 minutes):**
-- **Message**: "Hello, this is AWS Premium Support regarding your Sev5 case. We've received your critical severity request for EC2 issues. To provide the fastest resolution, I need to understand the specific problem you're experiencing. Can you describe what's happening with your EC2 resources and the business impact you're seeing?"
+**Immediate Communication:**
 
-**Tone Guidance**: 
-- Urgent but professional (respect the Sev5 claim while gathering facts)
-- Reassuring (Enterprise customer deserves confidence we're taking this seriously)
-- Information-gathering focused (get concrete details quickly)
+"Hello [Customer Name], I've received your Sev5 case regarding EC2. I'm prioritizing this immediately given the critical severity. To ensure I provide the most effective assistance, I need some additional details about what you're experiencing. Our current monitoring shows your EC2 instances are running normally, so I want to understand exactly what issue you're encountering."
 
-**Key Questions to Ask**:
-1. What specific EC2 behavior are you observing?
-2. When did this issue begin?
-3. How many users/systems are affected?
-4. What business operations are impacted?
-5. Have you made any recent changes to your infrastructure?
+**Tone Guidance:** Urgent but professional, information-gathering focused
+
+**Critical Questions to Ask:**
+
+1. "What specific symptoms are you observing that indicate your system is down?"
+
+2. "Which applications or services are affected, and how are users impacted?"
+
+3. "When did you first notice this issue?"
+
+4. "Are you receiving any specific error messages?"
+
+5. "What troubleshooting steps have you already attempted?"
 
 ## MONITORING & FOLLOW-UP
 
-**Signals to Watch For**:
-- Customer response time (Enterprise Sev5 should respond within 15 minutes)
-- Any CloudWatch alarms that trigger during investigation
-- Customer sentiment shifts based on our response speed
-- Technical findings that contradict or confirm severity claim
+**Signals to Watch:**
 
-**Decision Change Conditions**:
-- If customer provides description matching Sev5: Immediately ACCEPT severity and escalate to human engineer
-- If customer describes lower-impact issue: DOWNGRADE severity with explanation
-- If customer is unresponsive after 30 minutes: Treat as potential infrastructure issue and escalate
+- Customer response time (should be rapid for genuine Sev5)
 
-**Escalation Triggers**:
-- Confirmed Sev5 with business-critical impact
-- Customer unresponsive for >30 minutes on claimed critical issue
-- Technical analysis reveals hidden outage not captured by monitoring
-- Customer expresses dissatisfaction with initial response
+- Quality and detail of customer's problem description
 
-**Expected Next Context**: Customer response with problem description + technical analysis results from proactive account review within 15-20 minutes.
+- Any sudden changes in CloudWatch metrics or instance status
+
+- Customer's reaction to our health status findings
+
+**Decision Change Conditions:**
+
+- If customer provides detailed description matching Sev5 → escalate to human engineer immediately
+
+- If customer describes lower-impact issue → downgrade severity and proceed with standard troubleshooting
+
+- If customer doesn't respond within 30 minutes → attempt alternate contact methods
+
+**Escalation Triggers:**
+
+- Customer confirms genuine production outage with business impact
+
+- Technical investigation reveals hidden critical issues
+
+- Customer becomes unresponsive on claimed Sev5 case
+
+- Issue complexity exceeds automated troubleshooting capabilities
+
+**Next Expected Context:** Customer response with problem details within 15-30 minutes, enabling severity validation and investigation strategy refinement.
+
 ──────────────────────────────────────────────────
 """
 
