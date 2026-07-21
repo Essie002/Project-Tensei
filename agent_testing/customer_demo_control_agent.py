@@ -277,88 +277,58 @@ def test_scenario_empty_description(harness_arn):
     COORDINATOR_TASK_PLAN = """
 ## TASK PLAN
 
-1. **IMMEDIATE CUSTOMER OUTREACH** (Priority: HIGH)
+1. **IMMEDIATE CUSTOMER CONTACT** (Priority: HIGH)
+   - Action: Contact customer within 5 minutes to gather critical information
+   - Expected outcome: Detailed problem description and impact assessment
 
-- Action: Contact customer immediately to gather critical missing information
+2. **INFORMATION GATHERING** (Priority: HIGH) 
+   - Action: Ask specific diagnostic questions about the claimed outage
+   - Expected outcome: Technical details to validate or contradict severity claim
 
-- Expected Outcome: Detailed problem description within 15 minutes
+3. **TECHNICAL VALIDATION** (Priority: HIGH)
+   - Action: Cross-reference customer claims with deeper monitoring analysis
+   - Expected outcome: Confirmation of actual system state vs. customer experience
 
-2. **TECHNICAL VALIDATION** (Priority: HIGH)
+4. **SEVERITY REASSESSMENT** (Priority: MEDIUM)
+   - Action: Re-evaluate severity once full context is obtained
+   - Expected outcome: Accurate severity classification and appropriate response plan
 
-- Action: Conduct focused EC2 health verification while awaiting customer response
-
-- Expected Outcome: Confirm current technical status and identify any blind spots
-
-3. **SEVERITY RE-ASSESSMENT** (Priority: HIGH)
-
-- Action: Re-evaluate severity once description is obtained
-
-- Expected Outcome: Accurate severity classification within 20 minutes
-
-4. **INVESTIGATION INITIATION** (Priority: MEDIUM)
-
-- Action: Begin appropriate technical investigation based on clarified scope
-
-- Expected Outcome: Targeted troubleshooting approach
-
-5. **CONTINUOUS MONITORING** (Priority: LOW)
-
-- Action: Monitor account for any status changes during investigation
-
-- Expected Outcome: Real-time awareness of environmental shifts
+5. **ESCALATION PREPARATION** (Priority: LOW)
+   - Action: Prepare escalation path if genuine Sev5 is confirmed
+   - Expected outcome: Ready escalation if critical issue validated
 
 ## CUSTOMER COMMUNICATION DIRECTIVE
 
 **Immediate Communication:**
+"We've received your Sev5 case regarding EC2 and are treating this with highest priority. However, our initial monitoring shows your EC2 instances are running normally. To provide the fastest resolution, we need immediate details about the specific issue you're experiencing."
 
-"Hello [Customer Name], I've received your Sev5 case regarding EC2. I'm prioritizing this immediately given the critical severity. To ensure I provide the most effective assistance, I need some additional details about what you're experiencing. Our current monitoring shows your EC2 instances are running normally, so I want to understand exactly what issue you're encountering."
-
-**Tone Guidance:** Urgent but professional, information-gathering focused
+**Tone Guidance:** URGENT but PROFESSIONAL - acknowledge the claimed severity while efficiently gathering facts
 
 **Critical Questions to Ask:**
-
-1. "What specific symptoms are you observing that indicate your system is down?"
-
-2. "Which applications or services are affected, and how are users impacted?"
-
+1. "What specific error messages or symptoms are you observing?"
+2. "Which EC2 instances or applications are affected?"
 3. "When did you first notice this issue?"
-
-4. "Are you receiving any specific error messages?"
-
-5. "What troubleshooting steps have you already attempted?"
+4. "Are users unable to access your application, or are you seeing performance issues?"
+5. "Have you made any recent changes to your environment?"
 
 ## MONITORING & FOLLOW-UP
 
 **Signals to Watch:**
-
-- Customer response time (should be rapid for genuine Sev5)
-
-- Quality and detail of customer's problem description
-
-- Any sudden changes in CloudWatch metrics or instance status
-
-- Customer's reaction to our health status findings
+- Customer response time (Enterprise should respond quickly to Sev5)
+- Any new CloudWatch alarms or status check failures
+- Additional technical details that emerge from customer response
 
 **Decision Change Conditions:**
-
-- If customer provides detailed description matching Sev5 → escalate to human engineer immediately
-
-- If customer describes lower-impact issue → downgrade severity and proceed with standard troubleshooting
-
-- If customer doesn't respond within 30 minutes → attempt alternate contact methods
+- If customer provides evidence of genuine outage → ACCEPT Sev5 and escalate immediately
+- If customer describes minor issue → DOWNGRADE with explanation
+- If customer doesn't respond within 15 minutes → Proactive follow-up required
 
 **Escalation Triggers:**
+- Confirmed genuine Sev5 with business impact
+- Customer becomes unresponsive on claimed critical case
+- Technical evidence emerges contradicting our monitoring
 
-- Customer confirms genuine production outage with business impact
-
-- Technical investigation reveals hidden critical issues
-
-- Customer becomes unresponsive on claimed Sev5 case
-
-- Issue complexity exceeds automated troubleshooting capabilities
-
-**Next Expected Context:** Customer response with problem details within 15-30 minutes, enabling severity validation and investigation strategy refinement.
-
+**Next Context Expected:** Customer response with detailed problem description within 10 minutes, allowing for severity validation and refined action plan.
 ──────────────────────────────────────────────────
 """
 
