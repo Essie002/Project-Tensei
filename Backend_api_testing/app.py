@@ -6,10 +6,6 @@ the deployed AgentCore agents (agent_testing/). The frontend calls these HTTP
 endpoints; the gateway forwards the message to the Coordinator harness and
 returns the agent's reply.
 
-The frontend is a static page and currently runs a scripted simulation. This
-gateway does NOT change the frontend — it exposes endpoints the frontend team
-can call from app.js (see FRONTEND_INSTRUCTIONS.txt for the exact snippet).
-
 Endpoints
   GET  /health                 — liveness + whether AWS creds/harness are reachable
   POST /session                — create a new investigation session, returns sessionId
