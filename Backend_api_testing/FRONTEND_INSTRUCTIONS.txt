@@ -1,0 +1,170 @@
+================================================================================
+PROJECT TENSEI — HOW THE FRONTEND CONNECTS TO THE AGENTS VIA Backend_api_testing
+================================================================================
+
+This backend (the "gateway") sits between the frontend (tensei-prototype/) and
+the deployed AgentCore agents (agent_testing/). The frontend sends a customer
+message to the gateway over HTTP; the gateway forwards it to the Coordinator
+agent and returns the agent's reply.
+
+    Browser (app.js)  --POST /chat-->  Gateway (this folder)  -->  AgentCore
+                      <--  reply  --                          <--  agent
+
+Nothing in the frontend or the agents has been modified. This file tells the
+FRONTEND team exactly what to add to app.js to call the gateway.
+
+
+--------------------------------------------------------------------------------
+PART 1 — RUN THE GATEWAY
+--------------------------------------------------------------------------------
+
+1. You need AWS credentials for the Isengard account the agents live in
+   (account 070638634443, region us-east-1 — see agent_testing/ scripts).
+   Set them in your shell (PowerShell example, matching the agent scripts):
+
+       $Env:AWS_ACCESS_KEY_ID="ASIA..."
+       $Env:AWS_SECRET_ACCESS_KEY="..."
+       $Env:AWS_SESSION_TOKEN="..."
+       $Env:AWS_DEFAULT_REGION="us-east-1"
+
+   (macOS/Linux: use `export` instead of `$Env:`.)
+
+2. Install dependencies and start the gateway:
+
+       cd Backend_api_testing
+       python3 -m venv .venv
+       source .venv/bin/activate        # Windows: .venv\Scripts\activate
+       pip install -r requirements.txt
+       uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+
+3. Confirm it works BEFORE touching the frontend:
+   - Open http://localhost:8000/health
+        -> should show "credentials":"valid" and the account id.
+   - Open http://localhost:8000/
+        -> a tiny test page. Type a message; you should get a real agent reply.
+
+   If /health shows a credentials error, fix step 1 first. If /chat returns a
+   502 mentioning ListHarnesses / AccessDenied, your credentials are for the
+   wrong AWS account (they must be the account that owns the harnesses).
+
+
+--------------------------------------------------------------------------------
+PART 2 — THE API THE FRONTEND CALLS
+--------------------------------------------------------------------------------
+
+Base URL (local): http://localhost:8000
+
+POST /session
+    Call once when the workspace opens. Returns a session id you reuse on every
+    /chat call so the agent remembers the conversation.
+    Response: { "sessionId": "abc...0" }
+
+POST /chat
+    Send a customer message; get the agent's reply.
+    Request body:  { "message": "<customer text>", "sessionId": "<from /session>" }
+    Response:      { "reply": "<agent text>", "sessionId": "<same id>" }
+    (If you omit sessionId, the gateway creates one and returns it.)
+
+GET /health
+    Diagnostics: gateway status + whether AWS credentials/harness are reachable.
+
+
+--------------------------------------------------------------------------------
+PART 3 — WIRING app.js TO THE GATEWAY (frontend team to apply)
+--------------------------------------------------------------------------------
+
+The frontend currently runs a *scripted* simulation: sendCustomerMessage()
+(around line 1005 of app.js) advances a hardcoded `scenario` array and never
+calls a backend.
+
+To make the manual chat box talk to the REAL agent, add the two pieces below.
+This does not require deleting the scripted demo — you can keep it for the
+"quick option" buttons and only route the free-text input to the live agent.
+
+--- 3a. Add near the top of app.js (config + session helper) ---------------
+
+    // Base URL of the Backend_api_testing gateway.
+    const GATEWAY_URL = "http://localhost:8000";
+
+    // Holds the investigation session id once created.
+    let tenseiSessionId = null;
+
+    // Create a session on demand (called before the first real message).
+    async function ensureTenseiSession() {
+        if (tenseiSessionId) return tenseiSessionId;
+        const res = await fetch(`${GATEWAY_URL}/session`, { method: "POST" });
+        tenseiSessionId = (await res.json()).sessionId;
+        return tenseiSessionId;
+    }
+
+    // Send a message to the live agent and return its reply text.
+    async function askAgent(message) {
+        await ensureTenseiSession();
+        const res = await fetch(`${GATEWAY_URL}/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message, sessionId: tenseiSessionId }),
+        });
+        if (!res.ok) throw new Error(`Gateway error ${res.status}`);
+        return (await res.json()).reply;
+    }
+
+--- 3b. Replace the body of sendCustomerMessage() (around line 1005) --------
+
+    Your current function reads the input, shows the customer bubble, then
+    advances the scripted scenario. Swap the "advance scenario" part for a call
+    to the live agent, like this:
+
+    function sendCustomerMessage() {
+        const input = document.getElementById('customer-input');
+        const text = input.value.trim();
+        if (!text) return;
+
+        addMessage('customer', 'You', text);   // existing helper — unchanged
+        input.value = '';
+
+        // Show the AI "typing" indicator while we wait for the agent.
+        showTypingIndicator();                  // existing helper — unchanged
+
+        // Call the real Coordinator agent through the gateway.
+        askAgent(text)
+            .then(reply => {
+                removeTypingIndicator();        // existing helper — unchanged
+                // The agent replies in plain text/markdown. addMessage renders
+                // HTML, so convert newlines to <br> for basic formatting.
+                addMessage('ai', 'AI Agent', reply.replace(/\n/g, '<br>'));
+                addTrailEntry({ text: 'Live agent responded', actor: 'AI Agent' });
+            })
+            .catch(err => {
+                removeTypingIndicator();
+                addMessage('ai', 'AI Agent',
+                    '⚠️ Could not reach the support agent. Is the gateway running?');
+                console.error(err);
+            });
+    }
+
+That is the entire integration: the customer types in the existing chat box,
+app.js POSTs to /chat, and the agent's reply appears as an AI message. All the
+existing panels (trail, context, engineer) keep working as they do today.
+
+
+--------------------------------------------------------------------------------
+PART 4 — NOTES & THINGS TO DECIDE LATER
+--------------------------------------------------------------------------------
+
+* Which agent answers: the gateway targets the "customer_demo_coordinator"
+  harness by default (config.py). To point at a different deployed harness
+  (e.g. "tensei_coordinator"), set TENSEI_HARNESS_NAME before starting.
+
+* The agents currently return a structured "ASSESSMENT / TASK PLAN / ..."
+  analyst format (see their system prompts), not a chatty customer reply. If the
+  frontend wants customer-friendly phrasing, that is an AGENT prompt change
+  (agent_testing/), not a gateway change — out of scope here.
+
+* CORS: the gateway allows all origins for local dev. Before any shared/hosted
+  deployment, set TENSEI_ALLOWED_ORIGINS to the frontend's exact origin
+  (see the PLACEHOLDER in config.py).
+
+* This gateway uses plain request/response HTTP (POST /chat), which is the right
+  fit for a "type a message, get a reply" chat. If you later need the agent to
+  PUSH live context/trail updates on its own, that would be a WebSocket upgrade.
