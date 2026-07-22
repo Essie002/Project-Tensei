@@ -235,23 +235,25 @@ Case Description: (EMPTY — customer submitted no description)
 Service Affected: Amazon EC2
 
 Account Health Signals:
-- CloudWatch alarms: 0/12 currently in alarm state, 0 triggered in last 24h
-- EC2 instances: 8/8 running normally, all status checks passing
-- Recent activity: 23 CloudTrail events in last hour (within normal baseline 15-30)
+- CloudWatch alarms: 0 of 12 alarms currently active
+- CloudWatch alarms: 0 alarms triggered in last 24 hours
+- EC2 instances: 8/8 running normally in us-east-1
+- EC2 status checks: All instances passing status checks
+- Recent activity: Normal API activity (23 events/hour, baseline 15-30)
 - No deployments in last 24 hours
 - No IAM or security group changes in last 24 hours
-- Cost anomaly: NONE detected, daily spend $142.50 (within normal baseline $130-$155)
+- Cost anomaly: None detected (daily spend $142.50, baseline $130-$155)
 
-Customer Sentiment: Unable to assess (no description provided)
+Customer Sentiment: Unknown (no case description provided)
 
 Correlation Notes:
-- CRITICAL CONTRADICTION: Customer claims Sev5 (system down) but ALL account health signals show NORMAL operation
-- Empty case description on claimed Sev5 case is highly unusual for Enterprise customer
-- Customer has moderate technical sophistication based on history (provides logs when requested)
-- Recent case pattern shows customer typically provides adequate detail (3 cases in 90 days, all resolved efficiently)
-- No escalation history suggests generally satisfied customer relationship
-- Fast response time (8 min average) indicates engaged customer
-- Subject "EC2 issue" is extremely vague for claimed critical severity
+- CRITICAL CONTRADICTION: Customer claims Sev5 "system down" but ALL account health signals show normal operations
+- Empty case description on claimed critical severity is highly unusual for Enterprise customer
+- Customer's technical sophistication is moderate based on history
+- Recent case pattern shows customer typically provides detailed descriptions
+- No correlated infrastructure signals support the severity claim
+- Subject line "EC2 issue" is extremely vague for claimed business-critical outage
+- Customer has reliable response history (8min avg) and no escalation patterns
 
 ---
 Coordinator Agent: Assess this case and provide your decision and task plan.
