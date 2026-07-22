@@ -364,14 +364,15 @@ def create_harness(system_prompt, agent_name):
         for h in harnesses.get("harnesses", []):
             if h["harnessName"] == f"customer_demo_task_agent_{agent_name.lower()}":
                 arn = h["arn"]
-                h_id = h["harnessId"]
+                #Uncomment the following lines if you want to update the system prompt of an existing harness
+                #h_id = h["harnessId"]
                 print(f"✅ Found: {arn}")
-                client.update_harness(
-                    harnessId=h_id,
-                    systemPrompt=[{"text": system_prompt}]
-                )
-                print(f"waiting for harness {arn} to be updated...")
-                time.sleep(60)  # Wait for the update to propagate
+                #client.update_harness(
+                    #harnessId=h_id,
+                    #systemPrompt=[{"text": system_prompt}]
+                #)
+                #print(f"waiting for harness {arn} to be updated...")
+                #time.sleep(10)  # Wait for the update to propagate
                 return arn
         return None
 
