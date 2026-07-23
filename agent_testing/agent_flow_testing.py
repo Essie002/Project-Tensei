@@ -100,8 +100,8 @@ def get_or_create_harness(harness_name, system_prompt):
     except Exception as e:
         print(f"   ❌ Failed to create {harness_name}: {e}")
         return None
-
-
+    
+    
 def get_all_harnesses():
     """Fetch ARNs for all 3 agents. Returns dict or None on failure."""
     client = boto3.client("bedrock-agentcore-control", region_name=REGION)
