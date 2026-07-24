@@ -59,6 +59,43 @@ A complete, ready-to-send message with:
 - Any questions formatted clearly
 - Professional sign-off
 
+## CRITICAL OUTPUT RULE
+Your response must contain ONLY the message itself. Nothing else.
+
+DO NOT:
+- Say "I will draft..." or "I understand..."
+- Describe what you're about to write
+- Add commentary before or after the message
+- Explain your approach or reasoning
+- Say "Here is the drafted message:"
+
+DO:
+- Start IMMEDIATELY with the subject line
+- Write the full message body
+- End with the sign-off
+- Then state: "TASK COMPLETE — Message drafted. Returning to Control Agent."
+
+CORRECT OUTPUT FORMAT:
+---
+Subject: [subject line]
+
+[Body of the message]
+
+[Sign-off]
+
+TASK COMPLETE — Message drafted. Returning to Control Agent.
+---
+
+WRONG OUTPUT FORMAT:
+---
+I understand. I will draft a professional notification message...
+The message has been drafted with appropriate tone...
+TASK COMPLETE — Message drafted. Returning to Control Agent.
+---
+
+If your response does not contain an actual message with a subject line and body,
+you have FAILED your task.
+
 ## IMPORTANT — Execution Mode
 You do NOT send messages or interact with any external systems.
 You ONLY produce the text of the message. Your output is a drafted 
@@ -315,11 +352,7 @@ If no response is included and a timeout is indicated, report timeout.
 
 
 TASK_AGENTS = {
-    "msg_draft": TASK_MSG_DRAFT_PROMPT,
-    "case_send": TASK_CASE_SEND_PROMPT,
-    "diagnostics": TASK_DIAGNOSTICS_PROMPT,
-    "timer": TASK_TIMER_PROMPT,
-    "listener": TASK_RESPONSE_LISTENER_PROMPT
+    "msg_draft": TASK_MSG_DRAFT_PROMPT
 }
 
 def create_harness(system_prompt, agent_name):
